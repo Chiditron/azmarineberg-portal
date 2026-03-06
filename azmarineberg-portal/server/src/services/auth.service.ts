@@ -2,7 +2,8 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../db/pool.js';
-import type { AuthPayload, UserRole } from '../../shared/types.js';
+import type { AuthPayload } from '../middleware/auth.js';
+import type { UserRole } from '../shared-types.js';
 
 const SALT_ROUNDS = 10;
 
@@ -18,14 +19,14 @@ export function generateAccessToken(payload: AuthPayload): string {
   const secret = process.env.JWT_ACCESS_SECRET;
   const expiry = process.env.JWT_ACCESS_EXPIRY || '15m';
   if (!secret) throw new Error('JWT_ACCESS_SECRET not configured');
-  return jwt.sign(payload, secret, { expiresIn: expiry });
+  return jwt.sign(payload, secret, { expiresIn: expiry } as jwt.SignOptions);
 }
 
 export function generateRefreshToken(payload: AuthPayload): string {
   const secret = process.env.JWT_REFRESH_SECRET;
   const expiry = process.env.JWT_REFRESH_EXPIRY || '7d';
   if (!secret) throw new Error('JWT_REFRESH_SECRET not configured');
-  return jwt.sign(payload, secret, { expiresIn: expiry });
+  return jwt.sign(payload, secret, { expiresIn: expiry } as jwt.SignOptions);
 }
 
 export function verifyAccessToken(token: string): AuthPayload {

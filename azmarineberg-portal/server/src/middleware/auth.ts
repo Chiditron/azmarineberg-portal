@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import type { UserRole } from '../../shared/types.js';
+import type { UserRole } from '../shared-types.js';
 
 export interface AuthPayload {
   userId: string;

@@ -13,10 +13,11 @@ interface AuditLogEntry {
   actor_email: string | null;
 }
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
 
 export default function AuditLogPage() {
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
   const [entityType, setEntityType] = useState('');
   const [action, setAction] = useState('');
   const [from, setFrom] = useState('');
@@ -24,18 +25,32 @@ export default function AuditLogPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const params = new URLSearchParams();
-  params.set('limit', String(PAGE_SIZE));
-  params.set('offset', String(page * PAGE_SIZE));
+  params.set('limit', String(pageSize));
+  params.set('offset', String(page * pageSize));
   if (entityType) params.set('entity_type', entityType);
   if (action) params.set('action', action);
   if (from) params.set('from', from);
   if (to) params.set('to', to);
 
-  const { data: logs, isLoading } = useQuery({
-    queryKey: ['audit-logs', page, entityType, action, from, to],
+  const queryString = params.toString();
+  const { data: response, isLoading } = useQuery({
+    queryKey: ['audit-logs', page, pageSize, entityType, action, from, to, queryString],
     queryFn: () =>
-      api.get<AuditLogEntry[]>(`/dashboard/audit-logs?${params.toString()}`),
+      api.get<{ rows?: AuditLogEntry[]; total?: number } | AuditLogEntry[]>(`/dashboard/audit-logs?${queryString}`),
   });
+
+  // Support both { rows, total } (new) and plain array (old API)
+  const logs: AuditLogEntry[] = Array.isArray(response)
+    ? response
+    : (response?.rows ?? []);
+  const total: number = Array.isArray(response)
+    ? response.length  // old API: no total, use current page length so at least one page works
+    : (response?.total ?? 0);
+  const totalPages = pageSize > 0 ? Math.max(1, Math.ceil(total / pageSize)) : 1;
+  const hasNext = page + 1 < totalPages;
+  const hasPrev = page > 0;
+  const startRow = total === 0 ? 0 : page * pageSize + 1;
+  const endRow = Math.min((page + 1) * pageSize, total);
 
   return (
     <div>
@@ -114,7 +129,7 @@ export default function AuditLogPage() {
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
-        ) : !logs?.length ? (
+        ) : total === 0 ? (
           <div className="p-8 text-center text-gray-500">No audit logs found.</div>
         ) : (
           <>
@@ -171,22 +186,48 @@ export default function AuditLogPage() {
                 </tbody>
               </table>
             </div>
-            <div className="px-6 py-3 border-t flex justify-between items-center">
-              <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="px-4 py-2 rounded text-sm font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-gray-600">Page {page + 1}</span>
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={(logs?.length ?? 0) < PAGE_SIZE}
-                className="px-4 py-2 rounded text-sm font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Next
-              </button>
+            <div className="px-6 py-3 border-t flex flex-wrap justify-between items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Rows per page</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(0);
+                    }}
+                    className="px-3 py-1.5 border border-gray-300 rounded text-sm"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+                <span className="text-sm text-gray-600">
+                  Showing {startRow}–{endRow} of {total}
+                </span>
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={!hasPrev}
+                  className="px-4 py-2 rounded text-sm font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600">
+                  Page {page + 1} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!hasNext}
+                  className="px-4 py-2 rounded text-sm font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </>
         )}

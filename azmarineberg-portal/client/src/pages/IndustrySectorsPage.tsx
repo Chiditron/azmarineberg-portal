@@ -68,7 +68,7 @@ export default function IndustrySectorsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <h2 className="text-2xl font-bold text-gray-900">Industry Sectors</h2>
         {canEdit && (
           <button
@@ -107,6 +107,7 @@ export default function IndustrySectorsPage() {
         ) : !sectors?.length ? (
           <div className="p-8 text-center text-gray-500">No industry sectors. Add one to get started.</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -140,6 +141,7 @@ export default function IndustrySectorsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
       <DeleteConfirmDialog

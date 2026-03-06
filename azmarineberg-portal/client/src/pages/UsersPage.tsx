@@ -47,7 +47,7 @@ export default function UsersPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <h2 className="text-2xl font-bold text-gray-900">Users</h2>
         <button
           onClick={() => setShowCreate(true)}
@@ -80,6 +80,7 @@ export default function UsersPage() {
         ) : !users?.length ? (
           <div className="p-8 text-center text-gray-500">No users found.</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -112,6 +113,7 @@ export default function UsersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

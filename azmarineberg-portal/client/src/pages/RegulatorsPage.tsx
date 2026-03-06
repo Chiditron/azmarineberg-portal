@@ -69,7 +69,7 @@ export default function RegulatorsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <h2 className="text-2xl font-bold text-gray-900">Regulators</h2>
         {canEdit && (
           <button
@@ -102,6 +102,7 @@ export default function RegulatorsPage() {
         ) : !regulators?.length ? (
           <div className="p-8 text-center text-gray-500">No regulators. Add one to get started.</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -137,6 +138,7 @@ export default function RegulatorsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
       <DeleteConfirmDialog

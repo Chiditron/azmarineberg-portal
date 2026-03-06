@@ -159,16 +159,13 @@ export default function SidebarLayout() {
       >
         <div className="flex items-center justify-between h-16 px-4 border-b border-white/20 shrink-0 gap-2 bg-primary">
           <div className="flex items-center flex-1 min-w-0 h-full">
-            <img
-              src="/azmarineberg-logo.png"
-              alt="Azmarineberg"
-              className="h-11 w-auto object-contain max-h-full transition-all duration-300"
-              style={{
-                maxWidth: collapsed ? 44 : 220,
-                // Let logo background match sidebar: same green so it blends
-                backgroundColor: 'transparent',
-              }}
-            />
+            {!collapsed && (
+              <img
+                src="/azmarineberg-logo.png"
+                alt="Azmarineberg"
+                className="h-11 w-auto object-contain max-h-full max-w-[220px]"
+              />
+            )}
           </div>
           <button
             onClick={() => setCollapsed((c) => !c)}

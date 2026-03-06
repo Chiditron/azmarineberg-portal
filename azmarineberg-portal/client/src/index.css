@@ -16,3 +16,10 @@
     @apply px-6 py-4 text-sm text-gray-900;
   }
 }
+
+@layer utilities {
+  .overflow-x-auto {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

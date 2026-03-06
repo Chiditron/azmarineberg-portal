@@ -201,9 +201,9 @@ export default function ServiceDetailPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b flex justify-between items-center">
+        <div className="px-6 py-4 border-b flex justify-between items-center flex-wrap gap-2">
           <h3 className="font-semibold">Documents</h3>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {canUploadAsStaff && (
               <select value={uploadDocType} onChange={(e) => setUploadDocType(e.target.value)} className="px-2 py-1 border rounded text-sm">
                 {DOCUMENT_TYPES.map((d) => (
@@ -222,6 +222,7 @@ export default function ServiceDetailPage() {
           {!documents?.length ? (
             <p className="text-gray-500">No documents yet. Use Upload to add documents.</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
                 <tr className="border-b">
@@ -249,6 +250,7 @@ export default function ServiceDetailPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

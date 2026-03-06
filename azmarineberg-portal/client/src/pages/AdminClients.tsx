@@ -37,23 +37,23 @@ export default function AdminClients() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <h2 className="text-2xl font-bold text-gray-900">Clients</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 items-center min-w-0">
           {canCreate && (
             <button
               onClick={() => setShowCreate(true)}
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark shrink-0"
             >
               Add Client
             </button>
           )}
           <input
-          type="search"
-          placeholder="Search clients..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md w-64"
+            type="search"
+            placeholder="Search clients..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-md w-64 min-w-0"
           />
         </div>
       </div>
@@ -68,6 +68,7 @@ export default function AdminClients() {
         ) : !filtered?.length ? (
           <div className="p-8 text-center text-gray-500">No clients found.</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -101,6 +102,7 @@ export default function AdminClients() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

@@ -38,11 +38,11 @@ export default function CreateClientModal({ open, onClose, onSuccess }: CreateCl
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { data: regulators } = useQuery({
+  useQuery({
     queryKey: ['regulators'],
     queryFn: () => api.get<Regulator[]>('/admin/regulators'),
   });
-  const { data: serviceTypes } = useQuery({
+  useQuery({
     queryKey: ['service-types'],
     queryFn: () => api.get<ServiceType[]>('/admin/service-types'),
   });

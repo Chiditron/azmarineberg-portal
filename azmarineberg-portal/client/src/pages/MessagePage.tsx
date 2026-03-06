@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { api, type MessageListItem, type MessageThreadItem, type SendMessageBody } from '../services/api';
+import { api, type MessageThreadItem, type SendMessageBody } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const LIMIT = 50;

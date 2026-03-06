@@ -87,15 +87,23 @@ export async function serveFile(req: Request, res: Response) {
     return res.status(403).json({ error: 'Access denied' });
   }
 
-  const localPath = path.join(LOCAL_UPLOAD_DIR, key);
-  if (!existsSync(localPath)) return res.status(404).json({ error: 'File not found' });
-
   const fileName = doc.rows[0].file_name;
   const ext = path.extname(fileName).slice(1).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-  res.setHeader('Content-Type', contentType);
+
+  const localPath = path.join(LOCAL_UPLOAD_DIR, key);
+  if (existsSync(localPath)) {
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    createReadStream(localPath).pipe(res);
+    return;
+  }
+
+  const s3Result = await storage.getObjectStream(key);
+  if (!s3Result) return res.status(404).json({ error: 'File not found' });
+  res.setHeader('Content-Type', s3Result.contentType || contentType);
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-  createReadStream(localPath).pipe(res);
+  s3Result.stream.pipe(res);
 }
 
 export async function uploadDocument(req: Request, res: Response) {

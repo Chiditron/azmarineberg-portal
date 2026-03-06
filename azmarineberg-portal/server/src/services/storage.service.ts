@@ -9,13 +9,22 @@ import {
   CreateBucketCommand,
   HeadBucketCommand,
 } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import type { Readable } from 'stream';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const USE_LOCAL = process.env.STORAGE_TYPE === 'local';
 
 const LOCAL_UPLOAD_DIR = path.join(__dirname, '../../uploads');
+
+/** Base URL of this backend (for serve links). Prefer Render's auto env so CORS works. */
+function getBackendBaseUrl(): string {
+  return (
+    process.env.RENDER_EXTERNAL_URL ||
+    process.env.API_URL ||
+    'http://localhost:3000'
+  ).replace(/\/$/, '');
+}
 
 function ensureLocalDir(dir: string) {
   if (!existsSync(dir)) {
@@ -68,11 +77,21 @@ export async function uploadFile(key: string, body: Buffer, contentType: string)
   await uploadS3(key, body, contentType);
 }
 
-export async function getDownloadUrl(s3Key: string, expirySeconds = 300): Promise<string> {
-  if (USE_LOCAL) {
-    const apiUrl = process.env.API_URL || 'http://localhost:3000';
-    return `${apiUrl}/api/documents/serve?key=${encodeURIComponent(s3Key)}`;
-  }
+export async function getDownloadUrl(s3Key: string, _expirySeconds = 300): Promise<string> {
+  const base = getBackendBaseUrl();
+  return `${base}/api/documents/serve?key=${encodeURIComponent(s3Key)}`;
+}
+
+export function getLocalFilePath(key: string): string | null {
+  if (!USE_LOCAL) return null;
+  const cleanKey = key.replace(/^local:/, '');
+  const fullPath = path.join(LOCAL_UPLOAD_DIR, cleanKey);
+  return existsSync(fullPath) ? fullPath : null;
+}
+
+/** Stream a file from S3/R2. Returns null when using local storage. */
+export async function getObjectStream(s3Key: string): Promise<{ stream: Readable; contentType?: string } | null> {
+  if (USE_LOCAL) return null;
   const s3 = new S3Client({
     endpoint: process.env.S3_ENDPOINT,
     region: process.env.S3_REGION || 'us-east-1',
@@ -83,13 +102,10 @@ export async function getDownloadUrl(s3Key: string, expirySeconds = 300): Promis
     forcePathStyle: !!process.env.S3_ENDPOINT,
   });
   const BUCKET = process.env.S3_BUCKET || 'azmarineberg-documents';
-  const command = new GetObjectCommand({ Bucket: BUCKET, Key: s3Key });
-  return getSignedUrl(s3, command, { expiresIn: expirySeconds });
-}
-
-export function getLocalFilePath(key: string): string | null {
-  if (!USE_LOCAL) return null;
-  const cleanKey = key.replace(/^local:/, '');
-  const fullPath = path.join(LOCAL_UPLOAD_DIR, cleanKey);
-  return existsSync(fullPath) ? fullPath : null;
+  const response = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: s3Key }));
+  if (!response.Body) return null;
+  return {
+    stream: response.Body as Readable,
+    contentType: response.ContentType ?? undefined,
+  };
 }

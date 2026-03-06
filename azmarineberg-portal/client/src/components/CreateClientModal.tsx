@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { ZONES, getStatesByZone, getLgasByState } from '../data/nigerianLocations';
 
@@ -90,9 +91,9 @@ export default function CreateClientModal({ open, onClose, onSuccess }: CreateCl
       const res = await api.post<{ companyId: string; inviteLink?: string }>('/admin/clients', payload);
       if (res.inviteLink) {
         navigator.clipboard.writeText(res.inviteLink);
-        alert(`Client created. Invite link copied to clipboard:\n${res.inviteLink}`);
+        toast.success('Client created. Invite link copied to clipboard.', { duration: 5000 });
       } else {
-        alert('Client created successfully.');
+        toast.success('Client created successfully.');
       }
       onSuccess();
       onClose();

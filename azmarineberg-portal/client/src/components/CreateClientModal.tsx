@@ -1,22 +1,17 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
-import { api } from '../services/api';
-import { ZONES, getStatesByZone, getLgasByState } from '../data/nigerianLocations';
-
-interface Regulator {
-  id: string;
-  name: string;
-  code: string;
-  level: string;
-}
-
-interface ServiceType {
-  id: string;
-  name: string;
-  code: string;
-  regulator_id: string;
-}
+import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import { api } from "../services/api";
+import {
+  ZONES,
+  getStatesByZone,
+  getLgasByState,
+} from "../data/nigerianLocations";
+import { Formik, Form, FieldArray } from "formik";
+import * as Yup from "yup";
+import { TextLabelInput, SingleSelectInput, MyCheckbox } from "./ui/FormFields";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import Modal from "./ui/Modal";
 
 interface CreateClientModalProps {
   open: boolean;
@@ -24,249 +19,294 @@ interface CreateClientModalProps {
   onSuccess: () => void;
 }
 
-export default function CreateClientModal({ open, onClose, onSuccess }: CreateClientModalProps) {
-  const [company_name, setCompanyName] = useState('');
-  const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [contact_person, setContactPerson] = useState('');
-  const [lga, setLga] = useState('');
-  const [state, setState] = useState('');
-  const [zone, setZone] = useState('');
-  const [industry_sector_id, setIndustrySectorId] = useState('');
-  const [facilities, setFacilities] = useState([{ facility_name: '', facility_address: '', lga: '', state: '', zone: '' }]);
-  const [createUserAndInvite, setCreateUserAndInvite] = useState(true);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+const CreateClientSchema = Yup.object().shape({
+  company_name: Yup.string().required("Required"),
+  email: Yup.string().email("Invalid email").required("Required"),
+  phone: Yup.string().required("Required"),
+  address: Yup.string().required("Required"),
+  zone: Yup.string().required("Required"),
+  state: Yup.string().required("Required"),
+  contact_person: Yup.string().required("Required"),
+  industry_sector_id: Yup.string().required("Required"),
+  facilities: Yup.array()
+    .of(
+      Yup.object().shape({
+        facility_name: Yup.string().required("Required"),
+        facility_address: Yup.string().required("Required"),
+      }),
+    )
+    .min(1, "At least one facility is required"),
+});
 
-  useQuery({
-    queryKey: ['regulators'],
-    queryFn: () => api.get<Regulator[]>('/admin/regulators'),
-  });
-  useQuery({
-    queryKey: ['service-types'],
-    queryFn: () => api.get<ServiceType[]>('/admin/service-types'),
-  });
+export default function CreateClientModal({
+  open,
+  onClose,
+  onSuccess,
+}: CreateClientModalProps) {
   const { data: industrySectors } = useQuery({
-    queryKey: ['industry-sectors'],
-    queryFn: () => api.get<{ id: string; name: string; code: string }[]>('/admin/industry-sectors'),
+    queryKey: ["industry-sectors"],
+    queryFn: () =>
+      api.get<{ id: string; name: string; code: string }[]>(
+        "/admin/industry-sectors",
+      ),
+    enabled: open,
   });
-
-  const addFacility = () => {
-    setFacilities([...facilities, { facility_name: '', facility_address: '', lga: '', state: '', zone: '' }]);
-  };
-  const removeFacility = (i: number) => {
-    if (facilities.length > 1) setFacilities(facilities.filter((_, idx) => idx !== i));
-  };
-  const updateFacility = (i: number, field: string, value: string) => {
-    const next = [...facilities];
-    (next[i] as Record<string, string>)[field] = value;
-    setFacilities(next);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const payload = {
-        company_name,
-        address,
-        phone,
-        email,
-        contact_person,
-        lga: lga || state,
-        state,
-        zone,
-        industry_sector_id: industry_sector_id || undefined,
-        facilities: facilities.map((f) => ({
-          facility_name: f.facility_name,
-          facility_address: f.facility_address,
-          lga: f.lga || state,
-          state: f.state || state,
-          zone: f.zone || zone,
-        })),
-        createUserAndInvite: createUserAndInvite ? true : false,
-      };
-      const res = await api.post<{ companyId: string; inviteLink?: string }>('/admin/clients', payload);
-      if (res.inviteLink) {
-        navigator.clipboard.writeText(res.inviteLink);
-        toast.success('Client created. Invite link copied to clipboard.', { duration: 5000 });
-      } else {
-        toast.success('Client created successfully.');
-      }
-      onSuccess();
-      onClose();
-      reset();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create client');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const reset = () => {
-    setCompanyName('');
-    setAddress('');
-    setPhone('');
-    setEmail('');
-    setContactPerson('');
-    setLga('');
-    setState('');
-    setZone('');
-    setIndustrySectorId('');
-    setFacilities([{ facility_name: '', facility_address: '', lga: '', state: '', zone: '' }]);
-  };
-
-  if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b flex justify-between items-center">
-          <h3 className="text-lg font-semibold">Create Client</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">×</button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && <div className="p-3 bg-red-50 text-red-700 rounded text-sm">{error}</div>}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium mb-1">Company Name *</label>
-              <input required value={company_name} onChange={(e) => setCompanyName(e.target.value)} className="w-full px-3 py-2 border rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Email *</label>
-              <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 border rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Phone *</label>
-              <input required value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-3 py-2 border rounded" />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium mb-1">Address *</label>
-              <input required value={address} onChange={(e) => setAddress(e.target.value)} className="w-full px-3 py-2 border rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Zone *</label>
-              <select
-                required
-                value={zone}
-                onChange={(e) => {
-                  setZone(e.target.value);
-                  setState('');
-                  setLga('');
-                }}
-                className="w-full px-3 py-2 border rounded"
-              >
-                <option value="">Select</option>
-                {ZONES.map((z) => (
-                  <option key={z} value={z}>{z}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">State *</label>
-              <select
-                required
-                value={state}
-                onChange={(e) => {
-                  setState(e.target.value);
-                  setLga('');
-                }}
-                disabled={!zone}
-                className="w-full px-3 py-2 border rounded disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="">{zone ? 'Select' : 'Select zone first'}</option>
-                {getStatesByZone(zone).map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">LGA</label>
-              {state === 'Other' ? (
-                <input
-                  value={lga}
-                  onChange={(e) => setLga(e.target.value)}
-                  placeholder="Enter LGA"
-                  className="w-full px-3 py-2 border rounded"
-                />
-              ) : (
-                <select
-                  value={lga}
-                  onChange={(e) => setLga(e.target.value)}
-                  disabled={!state}
-                  className="w-full px-3 py-2 border rounded disabled:bg-gray-100 disabled:cursor-not-allowed"
-                >
-                  <option value="">{state ? 'Select' : 'Select state first'}</option>
-                  {getLgasByState(state).map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Contact Person *</label>
-              <input required value={contact_person} onChange={(e) => setContactPerson(e.target.value)} className="w-full px-3 py-2 border rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Industry Sector *</label>
-              <select required value={industry_sector_id} onChange={(e) => setIndustrySectorId(e.target.value)} className="w-full px-3 py-2 border rounded">
-                <option value="">
-                  {!industrySectors ? 'Loading...' : industrySectors.length === 0 ? 'No sectors configured' : 'Select'}
-                </option>
-                {industrySectors?.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      title="Create New Client"
+      description="Register a new organization and invite them to the portal"
+    >
+      <Formik
+        initialValues={{
+          company_name: "",
+          address: "",
+          phone: "",
+          email: "",
+          contact_person: "",
+          lga: "",
+          state: "",
+          zone: "",
+          industry_sector_id: "",
+          facilities: [
+            {
+              facility_name: "",
+              facility_address: "",
+              lga: "",
+              state: "",
+              zone: "",
+            },
+          ],
+          createUserAndInvite: true,
+        }}
+        validationSchema={CreateClientSchema}
+        onSubmit={async (values, { setSubmitting, setStatus }) => {
+          try {
+            const payload = {
+              ...values,
+              lga: values.lga || values.state,
+              facilities: values.facilities.map((f) => ({
+                ...f,
+                lga: f.lga || values.state,
+                state: f.state || values.state,
+                zone: f.zone || values.zone,
+              })),
+            };
+            const res = await api.post<{
+              companyId: string;
+              inviteLink?: string;
+            }>("/admin/clients", payload);
+            if (res.inviteLink) {
+              navigator.clipboard.writeText(res.inviteLink);
+              toast.success(
+                "Client created. Invite link copied to clipboard.",
+                {
+                  duration: 5000,
+                },
+              );
+            } else {
+              toast.success("Client created successfully.");
+            }
+            onSuccess();
+            onClose();
+          } catch (err) {
+            setStatus(
+              err instanceof Error ? err.message : "Failed to create client",
+            );
+          } finally {
+            setSubmitting(false);
+          }
+        }}
+      >
+        {({ values, setFieldValue, isSubmitting, status }) => (
+          <Form className="space-y-6 font-lato">
+            {status && (
+              <div className="p-4 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100 font-medium">
+                {status}
+              </div>
+            )}
 
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium">Facilities *</label>
-              <button type="button" onClick={addFacility} className="text-sm text-primary">+ Add Facility</button>
-            </div>
-            {facilities.map((f, i) => (
-              <div key={i} className="border rounded p-4 mb-2 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Facility {i + 1}</span>
-                  {facilities.length > 1 && (
-                    <button type="button" onClick={() => removeFacility(i)} className="text-red-600 text-sm">Remove</button>
-                  )}
-                </div>
-                <input
-                  required
-                  placeholder="Facility Name"
-                  value={f.facility_name}
-                  onChange={(e) => updateFacility(i, 'facility_name', e.target.value)}
-                  className="w-full px-3 py-2 border rounded"
-                />
-                <input
-                  placeholder="Facility Address"
-                  value={f.facility_address}
-                  onChange={(e) => updateFacility(i, 'facility_address', e.target.value)}
-                  className="w-full px-3 py-2 border rounded"
+            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+              <div className="col-span-2">
+                <TextLabelInput
+                  label="Company Name *"
+                  name="company_name"
+                  placeholder="Azmarineberg Ltd"
                 />
               </div>
-            ))}
-          </div>
+              <TextLabelInput
+                label="Email Address *"
+                name="email"
+                type="email"
+                placeholder="client@company.com"
+              />
+              <TextLabelInput
+                label="Phone Number *"
+                name="phone"
+                placeholder="+234..."
+              />
+              <div className="col-span-2">
+                <TextLabelInput
+                  label="Office Address *"
+                  name="address"
+                  placeholder="Full street address"
+                />
+              </div>
 
-          <div>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={createUserAndInvite} onChange={(e) => setCreateUserAndInvite(e.target.checked)} />
-              Create user account and generate invite link
-            </label>
-          </div>
+              <SingleSelectInput
+                label="Geopolitical Zone *"
+                name="zone"
+                options={ZONES.map((z) => ({ value: z, label: z }))}
+                onChange={(opt: any) => {
+                  setFieldValue("zone", opt ? opt.value : "");
+                  setFieldValue("state", "");
+                  setFieldValue("lga", "");
+                }}
+              />
 
-          <div className="flex gap-2 pt-4">
-            <button type="submit" disabled={loading} className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark disabled:opacity-50">
-              {loading ? 'Creating...' : 'Create Client'}
-            </button>
-            <button type="button" onClick={onClose} className="px-4 py-2 border rounded">Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
+              <SingleSelectInput
+                label="State *"
+                name="state"
+                disabled={!values.zone}
+                options={getStatesByZone(values.zone).map((s) => ({
+                  value: s,
+                  label: s,
+                }))}
+                onChange={(opt: any) => {
+                  setFieldValue("state", opt ? opt.value : "");
+                  setFieldValue("lga", "");
+                }}
+              />
+
+              <SingleSelectInput
+                label="LGA"
+                name="lga"
+                disabled={!values.state || values.state === "Other"}
+                options={getLgasByState(values.state).map((l) => ({
+                  value: l,
+                  label: l,
+                }))}
+              />
+
+              <TextLabelInput
+                label="Contact Person *"
+                name="contact_person"
+                placeholder="Full name of representative"
+              />
+
+              <div className="col-span-2">
+                <SingleSelectInput
+                  label="Industry Sector *"
+                  name="industry_sector_id"
+                  options={
+                    industrySectors?.map((s) => ({
+                      value: s.id,
+                      label: s.name,
+                    })) || []
+                  }
+                  isLoading={!industrySectors}
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-50">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider font-poppins">
+                    Facilities
+                  </h4>
+                  <p className="text-xs text-gray-500">
+                    Add at least one operational facility
+                  </p>
+                </div>
+                <FieldArray name="facilities">
+                  {({ push }) => (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        push({
+                          facility_name: "",
+                          facility_address: "",
+                          lga: "",
+                          state: "",
+                          zone: "",
+                        })
+                      }
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg font-bold text-xs transition-all active:scale-95"
+                    >
+                      <FontAwesomeIcon icon={faPlus} />
+                      Add Facility
+                    </button>
+                  )}
+                </FieldArray>
+              </div>
+
+              <FieldArray name="facilities">
+                {({ remove }) => (
+                  <div className="space-y-4">
+                    {values.facilities.map((_, index) => (
+                      <div
+                        key={index}
+                        className="p-5 border border-gray-100 rounded-2xl bg-gray-50/30 relative group"
+                      >
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            Facility #{index + 1}
+                          </span>
+                          {values.facilities.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => remove(index)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
+                          )}
+                        </div>
+                        <div className="space-y-4">
+                          <TextLabelInput
+                            label="Facility Name"
+                            name={`facilities.${index}.facility_name`}
+                            placeholder="Warehouse A, etc."
+                          />
+                          <TextLabelInput
+                            label="Facility Address"
+                            name={`facilities.${index}.facility_address`}
+                            placeholder="Full street address for this facility"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </FieldArray>
+            </div>
+
+            <div className="py-2">
+              <MyCheckbox name="createUserAndInvite">
+                <span className="font-semibold text-gray-700">
+                  Automated Onboarding
+                </span>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  Create user account and generate an invite link automatically
+                </p>
+              </MyCheckbox>
+            </div>
+
+            <div className="pt-6 border-t border-gray-100">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-4 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50 font-poppins"
+              >
+                {isSubmitting ? "Creating Client..." : "Create Client"}
+              </button>
+            </div>
+          </Form>
+        )}
+      </Formik>
+    </Modal>
   );
 }

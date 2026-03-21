@@ -1,6 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
+const API_BASE = 'https://azmarineberg-portal.onrender.com/api';
 
 async function getToken(): Promise<string | null> {
   return localStorage.getItem('accessToken');

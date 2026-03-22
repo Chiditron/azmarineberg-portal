@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import TableWrapper from '../components/TableWrapper';
 
 interface IndustrySector {
   id: string;
@@ -101,47 +102,47 @@ export default function IndustrySectorsPage() {
         loading={createMutation.isPending || updateMutation.isPending}
       />
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : !sectors?.length ? (
           <div className="p-8 text-center text-gray-500">No industry sectors. Add one to get started.</div>
         ) : (
-          <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Code</th>
-                {canEdit && (
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Actions</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {sectors.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium">{s.name}</td>
-                  <td className="px-6 py-4 text-sm">{s.code}</td>
+          <TableWrapper>
+            <table className="min-w-full">
+              <thead className="table-thead">
+                <tr>
+                  <th className="table-th">Name</th>
+                  <th className="table-th">Code</th>
                   {canEdit && (
-                    <td className="px-6 py-4 text-sm flex gap-2">
-                      <button onClick={() => openEdit(s)} className="text-primary hover:underline">
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget(s)}
-                        className="text-red-600 hover:underline"
-                        disabled={deleteMutation.isPending}
-                      >
-                        Delete
-                      </button>
-                    </td>
+                    <th className="table-th">Actions</th>
                   )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+              </thead>
+              <tbody className="table-tbody">
+                {sectors.map((s) => (
+                  <tr key={s.id}>
+                    <td className="table-td font-medium">{s.name}</td>
+                    <td className="table-td">{s.code}</td>
+                    {canEdit && (
+                      <td className="table-td flex gap-2">
+                        <button onClick={() => openEdit(s)} className="text-primary hover:underline">
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(s)}
+                          className="text-red-600 hover:underline"
+                          disabled={deleteMutation.isPending}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrapper>
         )}
       </div>
       <DeleteConfirmDialog

@@ -4,11 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
 import SignOutConfirmDialog from '../SignOutConfirmDialog';
+import MobileNav from '../MobileNav';
+import { getAppNavItems } from '../../navigation/appNav';
 
 const SIDEBAR_WIDTH_EXPANDED = 256;
 const SIDEBAR_WIDTH_COLLAPSED = 72;
 
-function NotificationBell() {
+type BellTone = 'default' | 'onPrimary';
+
+function NotificationBell({ tone = 'default' }: { tone?: BellTone }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -38,6 +42,10 @@ function NotificationBell() {
   }, []);
 
   const unreadCount = unreadData?.count ?? 0;
+  const btnTone =
+    tone === 'onPrimary'
+      ? 'text-white/90 hover:bg-white/15'
+      : 'text-gray-600 hover:bg-gray-100';
 
   const handleItemClick = async (n: { id: string; type: string; entity_type: string | null; entity_id: string | null }) => {
     setOpen(false);
@@ -75,28 +83,24 @@ function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative p-2 rounded-md text-gray-600 hover:bg-gray-100 transition-colors"
+        className={`relative min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md transition-colors ${btnTone}`}
         aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-6-6 6 6 0 00-6 6v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-white">
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-white px-1 text-[10px] font-medium text-primary">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-80 max-h-96 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg z-50">
-          <div className="p-2 border-b border-gray-100 flex items-center justify-between">
+        <div className="absolute right-0 top-full z-50 mt-1 max-h-96 w-80 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+          <div className="flex items-center justify-between border-b border-gray-100 p-2">
             <span className="text-sm font-medium text-gray-700">Notifications</span>
             {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                className="text-xs text-primary hover:underline"
-              >
+              <button type="button" onClick={handleMarkAllRead} className="text-xs text-primary hover:underline">
                 Mark all read
               </button>
             )}
@@ -110,10 +114,10 @@ function NotificationBell() {
                   <button
                     type="button"
                     onClick={() => handleItemClick(n)}
-                    className={`w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 ${n.read_at ? 'text-gray-600' : 'font-medium text-gray-900'}`}
+                    className={`w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50 ${n.read_at ? 'text-gray-600' : 'font-medium text-gray-900'}`}
                   >
                     <span className="line-clamp-2">{n.title}</span>
-                    <span className="text-xs text-gray-400 mt-0.5 block">{new Date(n.created_at).toLocaleDateString()}</span>
+                    <span className="mt-0.5 block text-xs text-gray-400">{new Date(n.created_at).toLocaleDateString()}</span>
                   </button>
                 </li>
               ))
@@ -140,40 +144,46 @@ export default function SidebarLayout() {
   };
 
   const isClient = user?.role === 'client';
-  const isSuperAdmin = user?.role === 'super_admin';
-  const isAdmin = user?.role === 'admin';
-  const isStaff = user?.role === 'staff';
 
   const displayName = isClient
     ? (user?.companyName || user?.email || '')
     : [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || '';
 
+  const navItems = getAppNavItems(user?.role);
+  const roleLabel = user?.role?.replace('_', ' ') ?? '';
+
   const sidebarWidth = collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED;
 
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
+      isActive ? 'bg-white/25' : 'hover:bg-white/15'
+    }`;
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sidebar - fixed so it stays put; only main content scrolls */}
+    <div className="flex min-h-screen flex-col bg-gray-50">
+      {/* Desktop: fixed left sidebar (lg+) */}
       <aside
-        className="fixed left-0 top-0 bottom-0 z-30 bg-primary text-white flex flex-col transition-all duration-300 ease-in-out"
+        className="fixed left-0 top-0 z-30 hidden h-full flex-col bg-primary text-white transition-all duration-300 ease-in-out lg:flex"
         style={{ width: sidebarWidth }}
       >
-        <div className="flex items-center justify-between h-16 px-4 border-b border-white/20 shrink-0 gap-2 bg-primary">
-          <div className="flex items-center flex-1 min-w-0 h-full">
+        <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-white/20 bg-primary px-4">
+          <div className="flex min-w-0 flex-1 items-center">
             {!collapsed && (
               <img
                 src="/azmarineberg-logo.png"
                 alt="Azmarineberg"
-                className="h-11 w-auto object-contain max-h-full max-w-[220px]"
+                className="h-11 max-h-full w-auto max-w-[220px] object-contain"
               />
             )}
           </div>
           <button
+            type="button"
             onClick={() => setCollapsed((c) => !c)}
-            className="p-2 rounded-md hover:bg-white/20 transition-colors"
+            className="shrink-0 rounded-md p-2 transition-colors hover:bg-white/20"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             <svg
-              className={`w-5 h-5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+              className={`h-5 w-5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -183,220 +193,30 @@ export default function SidebarLayout() {
           </button>
         </div>
 
-        <nav className="flex-1 py-4 overflow-y-auto min-h-0">
-          {isClient ? (
-            <>
-              <NavLink
-                to="/dashboard"
-                end
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                  }`
-                }
-              >
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" />
-                </svg>
-                {!collapsed && <span>Dashboard</span>}
-              </NavLink>
-              <NavLink
-                to="/profile"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                  }`
-                }
-              >
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                {!collapsed && <span>Profile</span>}
-              </NavLink>
-              <NavLink
-                to="/services"
-                end={false}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                  }`
-                }
-              >
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                {!collapsed && <span>Services</span>}
-              </NavLink>
-              <NavLink
-                to="/messages"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                  }`
-                }
-              >
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                {!collapsed && <span>Message</span>}
-              </NavLink>
-            </>
-          ) : (
-            <>
-              <NavLink
-                to="/admin"
-                end
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                  }`
-                }
-              >
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" />
-                </svg>
-                {!collapsed && <span>Dashboard</span>}
-              </NavLink>
-              {(isStaff || isSuperAdmin) && (
-                <NavLink
-                  to="/admin/clients"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                    }`
-                  }
-                >
-                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  {!collapsed && <span>Clients</span>}
-                </NavLink>
-              )}
-              {(isAdmin || isSuperAdmin) && (
-                <>
-                  <NavLink
-                    to="/admin/regulators"
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                        isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                      }`
-                    }
-                  >
-                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                    {!collapsed && <span>Regulators</span>}
-                  </NavLink>
-                  <NavLink
-                    to="/admin/service-types"
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                        isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                      }`
-                    }
-                  >
-                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    {!collapsed && <span>Service Types</span>}
-                  </NavLink>
-                </>
-              )}
-              {isSuperAdmin && (
-                <>
-                  <NavLink
-                    to="/admin/industry-sectors"
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                        isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                      }`
-                    }
-                  >
-                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    {!collapsed && <span>Industry Sectors</span>}
-                  </NavLink>
-                  <NavLink
-                    to="/admin/users"
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                        isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                      }`
-                    }
-                  >
-                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                    {!collapsed && <span>Users</span>}
-                  </NavLink>
-                </>
-              )}
-              <NavLink
-                to="/messages"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                  }`
-                }
-              >
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                {!collapsed && <span>Message</span>}
-              </NavLink>
-              {(isAdmin || isSuperAdmin) && (
-                <NavLink
-                  to="/admin/report"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                    }`
-                  }
-                >
-                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l2.414 2.414a1 1 0 001.414 0l2.414-2.414a1 1 0 01.707-.293H17a2 2 0 012 2v19a2 2 0 01-2 2z" />
-                  </svg>
-                  {!collapsed && <span>Report</span>}
-                </NavLink>
-              )}
-              {isSuperAdmin && (
-                <NavLink
-                  to="/admin/audit-log"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive ? 'bg-white/25' : 'hover:bg-white/15'
-                    }`
-                  }
-                >
-                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                  </svg>
-                  {!collapsed && <span>Audit Log</span>}
-                </NavLink>
-              )}
-            </>
-          )}
+        <nav className="min-h-0 flex-1 overflow-y-auto py-4" aria-label="Primary">
+          {navItems.map((item) => (
+            <NavLink key={item.id} to={item.to} end={item.end} className={navLinkClass}>
+              {item.icon}
+              {!collapsed && <span>{item.label}</span>}
+            </NavLink>
+          ))}
         </nav>
 
-        <div className="p-4 border-t border-white/20 shrink-0">
+        <div className="shrink-0 border-t border-white/20 p-4">
           {!collapsed && (
             <div className="mb-3 px-2">
-              <p className="text-sm truncate" title={user?.email}>
+              <p className="truncate text-sm" title={user?.email}>
                 {user?.email}
               </p>
-              <p className="text-xs opacity-80 capitalize">{user?.role?.replace('_', ' ')}</p>
+              <p className="text-xs capitalize opacity-80">{roleLabel}</p>
             </div>
           )}
           <button
+            type="button"
             onClick={handleLogoutClick}
-            className="w-full flex items-center justify-center gap-3 px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-sm font-medium transition-colors"
+            className="flex w-full items-center justify-center gap-3 rounded-lg bg-white/20 px-4 py-2 text-sm font-medium transition-colors hover:bg-white/30"
           >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             {!collapsed && <span>Logout</span>}
@@ -404,27 +224,49 @@ export default function SidebarLayout() {
         </div>
       </aside>
 
-      {/* Main content area - offset by sidebar width; only this area scrolls */}
+      {/* Mobile / tablet: top bar + hamburger menu */}
+      <header className="relative z-50 flex shrink-0 items-center justify-between border-b border-gray-200 bg-white/90 py-3 px-4 backdrop-blur-sm lg:hidden">
+        <span className="text-lg font-semibold text-primary">Azmarineberg Portal</span>
+        <div className="flex min-w-0 items-center gap-2">
+          <NotificationBell tone="default" />
+          <span
+            className="hidden max-w-[120px] truncate text-sm font-medium text-gray-700 sm:inline"
+            title={displayName}
+          >
+            {displayName}
+          </span>
+          <MobileNav
+            navItems={navItems}
+            userEmail={user?.email}
+            userRoleLabel={roleLabel}
+            onLogoutClick={handleLogoutClick}
+          />
+        </div>
+      </header>
+
+      {/* Main: offset by sidebar on desktop */}
       <main
-        className="min-h-screen overflow-y-auto min-w-0 flex flex-col"
-        style={{ marginLeft: sidebarWidth }}
+        className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden transition-[margin] duration-300 ease-in-out ${
+          collapsed ? 'lg:ml-[72px]' : 'lg:ml-64'
+        }`}
       >
-        {/* Horizontal header: portal name (left), notification bell + user display name (right) */}
-        <header className="flex items-center justify-between shrink-0 py-4 px-6 sm:px-8 lg:px-12 border-b border-gray-200 bg-white/80">
+        {/* Desktop-only content header (bell + user) — logout stays in sidebar */}
+        <header className="hidden shrink-0 items-center justify-between border-b border-gray-200 bg-white/80 px-6 py-4 sm:px-8 lg:flex lg:px-12">
           <span className="text-lg font-semibold text-primary">Azmarineberg Portal</span>
           <div className="flex items-center gap-3">
-            <NotificationBell />
-            <span className="text-sm font-medium text-gray-700 truncate max-w-[200px] sm:max-w-xs" title={displayName}>
+            <NotificationBell tone="default" />
+            <span className="max-w-[200px] truncate text-sm font-medium text-gray-700 sm:max-w-xs" title={displayName}>
               {displayName}
             </span>
           </div>
         </header>
-        <div className="flex-1 pt-6 pb-16 px-6 sm:px-8 lg:px-12">
-          <div className="max-w-7xl mx-auto">
+        <div className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
+          <div className="mx-auto min-w-0 max-w-7xl">
             <Outlet />
           </div>
         </div>
       </main>
+
       <SignOutConfirmDialog
         open={showSignOutConfirm}
         onClose={() => setShowSignOutConfirm(false)}

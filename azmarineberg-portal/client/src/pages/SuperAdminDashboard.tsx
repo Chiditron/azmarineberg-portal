@@ -73,12 +73,12 @@ export default function SuperAdminDashboard() {
           {data?.byRegulator?.length ? (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.byRegulator}>
+                <BarChart data={data.byRegulator} barCategoryGap="28%">
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="code" tick={{ fontSize: 11 }} />
                   <YAxis />
-                  <Tooltip content={<RegulatorTooltip />} />
-                  <Bar dataKey="count" fill={CHART_COLORS[0]} />
+                  <Tooltip content={<RegulatorTooltip />} cursor={false} />
+                  <Bar dataKey="count" fill={CHART_COLORS[0]} maxBarSize={36} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -98,7 +98,9 @@ export default function SuperAdminDashboard() {
                     nameKey="sector"
                     cx="50%"
                     cy="50%"
+                    innerRadius={52}
                     outerRadius={80}
+                    paddingAngle={2}
                     label
                   >
                     {data.bySector.map((_, i) => (

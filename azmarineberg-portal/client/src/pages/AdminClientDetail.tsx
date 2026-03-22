@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import AddServiceModal from '../components/AddServiceModal';
 import AddFacilityModal from '../components/AddFacilityModal';
+import TableWrapper from '../components/TableWrapper';
 import { useState } from 'react';
 
 interface ClientDetail {
@@ -113,44 +114,44 @@ export default function AdminClientDetail() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
-        <h3 className="px-6 py-4 border-b text-lg font-semibold">Services ({client.services?.length ?? 0})</h3>
-        <div className="overflow-x-auto">
-          {!client.services?.length ? (
-            <p className="p-6 text-gray-500">No services yet. Click &quot;Add Service&quot; to create one.</p>
-          ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+        <h3 className="px-6 py-4 border-b border-gray-200 text-lg font-semibold">Services ({client.services?.length ?? 0})</h3>
+        {!client.services?.length ? (
+          <p className="p-6 text-gray-500">No services yet. Click &quot;Add Service&quot; to create one.</p>
+        ) : (
+          <TableWrapper>
+            <table className="min-w-full">
+              <thead className="table-thead">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Service</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Regulator</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Facility</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Valid Until</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Status</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Action</th>
+                  <th className="table-th">Service</th>
+                  <th className="table-th">Regulator</th>
+                  <th className="table-th">Facility</th>
+                  <th className="table-th">Valid Until</th>
+                  <th className="table-th">Status</th>
+                  <th className="table-th">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="table-tbody">
                 {client.services.map((s) => (
-                  <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm">
+                  <tr key={s.id}>
+                    <td className="table-td">
                       <span className="font-medium">{s.service_type_name ?? s.service_code}</span>
                     </td>
-                    <td className="px-6 py-4 text-sm">{s.regulator_name ?? '-'}</td>
-                    <td className="px-6 py-4 text-sm">{s.facility_name ?? '-'}</td>
-                    <td className="px-6 py-4 text-sm">{new Date(s.validity_end).toLocaleDateString()}</td>
-                    <td className="px-6 py-4">
+                    <td className="table-td">{s.regulator_name ?? '-'}</td>
+                    <td className="table-td">{s.facility_name ?? '-'}</td>
+                    <td className="table-td">{new Date(s.validity_end).toLocaleDateString()}</td>
+                    <td className="table-td">
                       <span className="px-2 py-1 text-xs rounded-full bg-gray-100 capitalize">{s.status.replace('_', ' ')}</span>
                     </td>
-                    <td className="px-6 py-4 text-sm">
+                    <td className="table-td">
                       <Link to={`/services/${s.id}`} className="text-primary hover:underline">Manage</Link>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
-        </div>
+          </TableWrapper>
+        )}
       </div>
 
       <AddServiceModal

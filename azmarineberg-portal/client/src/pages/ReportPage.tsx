@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
+import TableWrapper from '../components/TableWrapper';
 
 interface ReportRow {
   facility: string;
@@ -300,51 +301,39 @@ export default function ReportPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
         {isLoading ? (
           <div className="p-12 text-center text-gray-500">Loading...</div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <TableWrapper maxHeight="min(65vh, 28rem)">
+              <table className="min-w-full">
+                <thead className="table-thead">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                      Facility
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                      Address
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                      Sector
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                      Service
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                      Regulator
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                      Status
-                    </th>
+                    <th className="table-th">Facility</th>
+                    <th className="table-th">Address</th>
+                    <th className="table-th">Sector</th>
+                    <th className="table-th">Service</th>
+                    <th className="table-th">Regulator</th>
+                    <th className="table-th">Status</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="table-tbody">
                   {rows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                      <td colSpan={6} className="table-td text-center text-gray-500 py-8">
                         No records match the current filters.
                       </td>
                     </tr>
                   ) : (
                     rows.map((row, i) => (
-                      <tr key={i} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-900">{row.facility}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{row.address}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{row.sector}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{row.service}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{row.regulator}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700 capitalize">
+                      <tr key={i}>
+                        <td className="table-td font-medium">{row.facility}</td>
+                        <td className="table-td">{row.address}</td>
+                        <td className="table-td">{row.sector}</td>
+                        <td className="table-td">{row.service}</td>
+                        <td className="table-td">{row.regulator}</td>
+                        <td className="table-td capitalize">
                           {row.status.replace(/_/g, ' ')}
                         </td>
                       </tr>
@@ -352,7 +341,7 @@ export default function ReportPage() {
                   )}
                 </tbody>
               </table>
-            </div>
+            </TableWrapper>
             <div className="px-6 py-3 border-t border-gray-200 flex justify-between items-center">
               <button
                 type="button"

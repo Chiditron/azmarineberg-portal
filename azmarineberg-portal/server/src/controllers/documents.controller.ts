@@ -4,6 +4,7 @@ import { existsSync } from 'fs';
 import path from 'path';
 import { pool } from '../db/pool.js';
 import * as storage from '../services/storage.service.js';
+import * as auditService from '../services/audit.service.js';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -155,6 +156,15 @@ export async function uploadDocument(req: Request, res: Response) {
     });
   }
   await pool.query('UPDATE documents SET s3_key = $1 WHERE id = $2', [s3Key, docId]);
+
+  await auditService.log(
+    req.user!.userId,
+    'upload_document',
+    'document',
+    docId,
+    { service_id: serviceId, file_name: file.originalname, document_type: documentType },
+    req.ip
+  );
 
   const companyIdForNotify = serviceCheck.rows[0].company_id;
   const title = 'New document uploaded';

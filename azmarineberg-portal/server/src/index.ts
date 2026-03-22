@@ -1,8 +1,10 @@
 import 'dotenv/config';
-import express from 'express';
+import express, { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import { startExpiryCron } from './jobs/expiryNotifications.js';
 import { startReportRemindersCron } from './jobs/reportReminders.js';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import authRoutes from './routes/auth.routes.js';
 import clientsRoutes from './routes/clients.routes.js';
 import adminRoutes from './routes/admin.routes.js';
@@ -17,28 +19,45 @@ import { pool } from './db/pool.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
 
-// app.use(cors({ origin: process.env.APP_URL || 'http://localhost:5173', credentials: true }));
+app.use(helmet({ contentSecurityPolicy: false }));
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  process.env.APP_URL
-];
+const allowedOrigins = ['http://localhost:5173', process.env.APP_URL].filter(
+  (o): o is string => Boolean(o)
+);
 
 app.use(
   cors({
-    origin: function (origin, callback) {
+    origin(origin, callback) {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error("CORS not allowed"));
+        callback(new Error('CORS not allowed'));
       }
     },
     credentials: true,
   })
 );
-
 app.use(express.json());
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: { error: 'Too many attempts; try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth', authLimiter);
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  message: { error: 'Too many requests; try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', apiLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientsRoutes);
@@ -80,6 +99,31 @@ app.get('/api/health', (_req, res) => {
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
+
+function isDbUnreachable(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { code?: string; name?: string; errors?: Array<{ code?: string }> };
+  if (e.code === 'ECONNREFUSED') return true;
+  if (e.name === 'AggregateError' && Array.isArray(e.errors)) {
+    return e.errors.some((x) => x.code === 'ECONNREFUSED');
+  }
+  return false;
+}
+
+const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  console.error(err);
+  if (isDbUnreachable(err)) {
+    res.status(503).json({
+      error:
+        'Database unreachable. Start PostgreSQL and set DATABASE_URL in server/.env (see server/.env.example). Then run npm run db:migrate and npm run db:seed from the portal folder.',
+    });
+    return;
+  }
+  const status = (err as { status?: number }).status ?? 500;
+  const message = isProduction ? 'An error occurred' : err.message;
+  res.status(status).json({ error: message });
+};
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

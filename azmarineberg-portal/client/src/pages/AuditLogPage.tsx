@@ -1,6 +1,7 @@
 import { useState, Fragment } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
+import TableWrapper from '../components/TableWrapper';
 
 interface AuditLogEntry {
   id: string;
@@ -126,38 +127,38 @@ export default function AuditLogPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : total === 0 ? (
           <div className="p-8 text-center text-gray-500">No audit logs found.</div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <TableWrapper maxHeight="min(70vh, 32rem)">
+              <table className="min-w-full">
+                <thead className="table-thead">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Time</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Action</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Entity</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Actor</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Details</th>
+                    <th className="table-th">Time</th>
+                    <th className="table-th">Action</th>
+                    <th className="table-th">Entity</th>
+                    <th className="table-th">Actor</th>
+                    <th className="table-th">Details</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="table-tbody">
                   {logs.map((l) => (
                     <Fragment key={l.id}>
-                      <tr className="hover:bg-gray-50">
-                        <td className="px-6 py-3 text-sm text-gray-600">
+                      <tr>
+                        <td className="table-td text-gray-600">
                           {new Date(l.created_at).toLocaleString()}
                         </td>
-                        <td className="px-6 py-3 text-sm">{l.action}</td>
-                        <td className="px-6 py-3 text-sm">
+                        <td className="table-td">{l.action}</td>
+                        <td className="table-td">
                           {l.entity_type}
                           {l.entity_id ? `:${String(l.entity_id).slice(0, 8)}...` : ''}
                         </td>
-                        <td className="px-6 py-3 text-sm">{l.actor_email ?? '-'}</td>
-                        <td className="px-6 py-3 text-sm">
+                        <td className="table-td">{l.actor_email ?? '-'}</td>
+                        <td className="table-td">
                           {l.changes && Object.keys(l.changes).length > 0 ? (
                             <button
                               onClick={() =>
@@ -185,7 +186,7 @@ export default function AuditLogPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableWrapper>
             <div className="px-6 py-3 border-t flex flex-wrap justify-between items-center gap-4">
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">

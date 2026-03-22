@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import CreateClientModal from '../components/CreateClientModal';
+import TableWrapper from '../components/TableWrapper';
 
 interface Company {
   id: string;
@@ -62,47 +63,47 @@ export default function AdminClients() {
         onClose={() => setShowCreate(false)}
         onSuccess={() => refetch()}
       />
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : !filtered?.length ? (
           <div className="p-8 text-center text-gray-500">No clients found.</div>
         ) : (
-          <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Company</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Contact</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">State / Zone</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Sector</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Facilities</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Services</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm">
-                    <span className="font-medium">{c.company_name}</span>
-                    <p className="text-sm text-gray-500">{c.email}</p>
-                  </td>
-                  <td className="px-6 py-4 text-sm">{c.contact_person}</td>
-                  <td className="px-6 py-4 text-sm">{c.state} / {c.zone}</td>
-                  <td className="px-6 py-4 text-sm">{c.industry_sector}</td>
-                  <td className="px-6 py-4 text-sm">{c.facility_count ?? 0}</td>
-                  <td className="px-6 py-4 text-sm">{c.service_count ?? 0}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <Link to={`/admin/clients/${c.id}`} className="text-primary hover:underline">
-                      Manage
-                    </Link>
-                  </td>
+          <TableWrapper>
+            <table className="min-w-full">
+              <thead className="table-thead">
+                <tr>
+                  <th className="table-th">Company</th>
+                  <th className="table-th">Contact</th>
+                  <th className="table-th">State / Zone</th>
+                  <th className="table-th">Sector</th>
+                  <th className="table-th">Facilities</th>
+                  <th className="table-th">Services</th>
+                  <th className="table-th">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+              </thead>
+              <tbody className="table-tbody">
+                {filtered.map((c) => (
+                  <tr key={c.id}>
+                    <td className="table-td">
+                      <span className="font-medium">{c.company_name}</span>
+                      <p className="text-sm text-gray-500">{c.email}</p>
+                    </td>
+                    <td className="table-td">{c.contact_person}</td>
+                    <td className="table-td">{c.state} / {c.zone}</td>
+                    <td className="table-td">{c.industry_sector}</td>
+                    <td className="table-td">{c.facility_count ?? 0}</td>
+                    <td className="table-td">{c.service_count ?? 0}</td>
+                    <td className="table-td">
+                      <Link to={`/admin/clients/${c.id}`} className="text-primary hover:underline">
+                        Manage
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrapper>
         )}
       </div>
     </div>

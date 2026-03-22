@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import TableWrapper from '../components/TableWrapper';
 
 interface Regulator {
   id: string;
@@ -96,49 +97,49 @@ export default function RegulatorsPage() {
         loading={createMutation.isPending || updateMutation.isPending}
       />
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : !regulators?.length ? (
           <div className="p-8 text-center text-gray-500">No regulators. Add one to get started.</div>
         ) : (
-          <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Code</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Level</th>
-                {canEdit && (
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Actions</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {regulators.map((r) => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium">{r.name}</td>
-                  <td className="px-6 py-4 text-sm">{r.code}</td>
-                  <td className="px-6 py-4 text-sm capitalize">{r.level}</td>
+          <TableWrapper>
+            <table className="min-w-full">
+              <thead className="table-thead">
+                <tr>
+                  <th className="table-th">Name</th>
+                  <th className="table-th">Code</th>
+                  <th className="table-th">Level</th>
                   {canEdit && (
-                    <td className="px-6 py-4 text-sm flex gap-2">
-                      <button onClick={() => openEdit(r)} className="text-primary hover:underline">
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget(r)}
-                        className="text-red-600 hover:underline"
-                        disabled={deleteMutation.isPending}
-                      >
-                        Delete
-                      </button>
-                    </td>
+                    <th className="table-th">Actions</th>
                   )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+              </thead>
+              <tbody className="table-tbody">
+                {regulators.map((r) => (
+                  <tr key={r.id}>
+                    <td className="table-td font-medium">{r.name}</td>
+                    <td className="table-td">{r.code}</td>
+                    <td className="table-td capitalize">{r.level}</td>
+                    {canEdit && (
+                      <td className="table-td flex gap-2">
+                        <button onClick={() => openEdit(r)} className="text-primary hover:underline">
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(r)}
+                          className="text-red-600 hover:underline"
+                          disabled={deleteMutation.isPending}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrapper>
         )}
       </div>
       <DeleteConfirmDialog

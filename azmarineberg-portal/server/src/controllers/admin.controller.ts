@@ -494,5 +494,14 @@ export async function addService(req: Request, res: Response) {
       JSON.stringify(documents_required || []),
     ]
   );
-  res.status(201).json({ id: result.rows[0].id });
+  const serviceId = result.rows[0].id;
+  await auditService.log(
+    req.user?.userId ?? null,
+    'add_service',
+    'service',
+    serviceId,
+    { service_type_id, regulator_id, facility_id, status: status || 'draft' },
+    req.ip
+  );
+  res.status(201).json({ id: serviceId });
 }

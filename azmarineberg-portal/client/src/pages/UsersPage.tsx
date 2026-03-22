@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
+import TableWrapper from '../components/TableWrapper';
 
 interface User {
   id: string;
@@ -74,46 +75,46 @@ export default function UsersPage() {
         loading={updateMutation.isPending}
       />
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : !users?.length ? (
           <div className="p-8 text-center text-gray-500">No users found.</div>
         ) : (
-          <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">First Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Last Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Email</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Phone</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Role</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Created</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm">{u.first_name ?? '-'}</td>
-                  <td className="px-6 py-4 text-sm">{u.last_name ?? '-'}</td>
-                  <td className="px-6 py-4 text-sm font-medium">{u.email}</td>
-                  <td className="px-6 py-4 text-sm">{u.phone ?? '-'}</td>
-                  <td className="px-6 py-4 text-sm capitalize">{u.role?.replace('_', ' ')}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(u.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <button onClick={() => setEditing(u)} className="text-primary hover:underline">
-                      Edit
-                    </button>
-                  </td>
+          <TableWrapper>
+            <table className="min-w-full">
+              <thead className="table-thead">
+                <tr>
+                  <th className="table-th">First Name</th>
+                  <th className="table-th">Last Name</th>
+                  <th className="table-th">Email</th>
+                  <th className="table-th">Phone</th>
+                  <th className="table-th">Role</th>
+                  <th className="table-th">Created</th>
+                  <th className="table-th">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+              </thead>
+              <tbody className="table-tbody">
+                {users.map((u) => (
+                  <tr key={u.id}>
+                    <td className="table-td">{u.first_name ?? '-'}</td>
+                    <td className="table-td">{u.last_name ?? '-'}</td>
+                    <td className="table-td font-medium">{u.email}</td>
+                    <td className="table-td">{u.phone ?? '-'}</td>
+                    <td className="table-td capitalize">{u.role?.replace('_', ' ')}</td>
+                    <td className="table-td text-gray-500">
+                      {new Date(u.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="table-td">
+                      <button onClick={() => setEditing(u)} className="text-primary hover:underline">
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrapper>
         )}
       </div>
     </div>

@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import TableWrapper from '../components/TableWrapper';
 
 interface ReportRow {
+  serviceId: string;
   facility: string;
   address: string;
   sector: string;
@@ -87,6 +89,7 @@ function buildExportParams(
 }
 
 export default function ReportPage() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [facilityId, setFacilityId] = useState('');
@@ -138,7 +141,7 @@ export default function ReportPage() {
   const resetPage = useCallback(() => setPage(0), []);
 
   const handleExport = useCallback(
-    async (format: 'csv' | 'excel' | 'pdf') => {
+    async (format: 'csv' | 'excel') => {
       const ext = format === 'excel' ? 'xlsx' : format;
       const q = buildExportParams(
         format === 'excel' ? 'excel' : format,
@@ -291,13 +294,6 @@ export default function ReportPage() {
           >
             Export Excel
           </button>
-          <button
-            type="button"
-            onClick={() => handleExport('pdf')}
-            className="px-4 py-2 rounded-md text-sm font-medium bg-primary text-white hover:bg-primary/90 transition-colors"
-          >
-            Export PDF
-          </button>
         </div>
       </div>
 
@@ -326,8 +322,20 @@ export default function ReportPage() {
                       </td>
                     </tr>
                   ) : (
-                    rows.map((row, i) => (
-                      <tr key={i}>
+                    rows.map((row) => (
+                      <tr
+                        key={row.serviceId}
+                        role="link"
+                        tabIndex={0}
+                        onClick={() => navigate(`/services/${row.serviceId}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            navigate(`/services/${row.serviceId}`);
+                          }
+                        }}
+                        className="cursor-pointer hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      >
                         <td className="table-td font-medium">{row.facility}</td>
                         <td className="table-td">{row.address}</td>
                         <td className="table-td">{row.sector}</td>

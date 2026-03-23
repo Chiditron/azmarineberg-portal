@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import TableWrapper from '../components/TableWrapper';
+import { PasswordInput } from '../components/PasswordInput';
 
 interface User {
   id: string;
@@ -208,13 +209,13 @@ function CreateUserModal({
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Password *</label>
-            <input
+            <PasswordInput
               required
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 pr-10 border rounded focus:ring-2 focus:ring-primary focus:border-primary"
               placeholder="Min 8 chars, uppercase, lowercase, number, special"
+              autoComplete="new-password"
             />
           </div>
           <div>

@@ -147,6 +147,20 @@ export const api = {
     }>('/auth/me');
   },
 
+  async forgotPassword(email: string) {
+    return request<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async resetPassword(token: string, newPassword: string, confirmPassword: string) {
+    return request<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword, confirmPassword }),
+    });
+  },
+
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
@@ -212,7 +226,11 @@ export const api = {
       return request<{ rows: MessageListItem[]; total: number }>(`/messages?${sp.toString()}`);
     },
     get(id: string) {
-      return request<{ message: MessageThreadItem; thread: MessageThreadItem[] }>(`/messages/${id}`);
+      return request<{
+        message: MessageThreadItem;
+        thread: MessageThreadItem[];
+        bulk?: { recipientCount: number };
+      }>(`/messages/${id}`);
     },
     send(body: SendMessageBody) {
       return request<{ id?: string; ids?: string[]; count?: number }>('/messages', { method: 'POST', body: JSON.stringify(body) });
@@ -243,6 +261,8 @@ export interface MessageListItem {
   senderDisplay?: string;
   recipientId?: string;
   recipientDisplay?: string;
+  isBulk?: boolean;
+  bulkRecipientCount?: number;
 }
 
 export interface MessageThreadItem {

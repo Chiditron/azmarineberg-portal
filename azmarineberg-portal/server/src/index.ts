@@ -23,9 +23,12 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(helmet({ contentSecurityPolicy: false }));
 
-const allowedOrigins = ['http://localhost:5173', process.env.APP_URL].filter(
-  (o): o is string => Boolean(o)
-);
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  process.env.APP_URL,
+].filter((o): o is string => Boolean(o));
 
 app.use(
   cors({
@@ -119,8 +122,16 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     });
     return;
   }
+  const pgCode = typeof err === 'object' && err && 'code' in err ? String((err as { code: unknown }).code) : '';
+  if (pgCode === '42703') {
+    res.status(500).json({
+      error:
+        'Database is missing a required column (schema out of date). From the azmarineberg-portal folder run: npm run db:migrate',
+    });
+    return;
+  }
   const status = (err as { status?: number }).status ?? 500;
-  const message = isProduction ? 'An error occurred' : err.message;
+  const message = isProduction ? 'An error occurred' : (err as Error).message;
   res.status(status).json({ error: message });
 };
 app.use(errorHandler);

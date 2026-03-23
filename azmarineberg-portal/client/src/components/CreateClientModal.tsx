@@ -88,10 +88,23 @@ export default function CreateClientModal({ open, onClose, onSuccess }: CreateCl
         })),
         createUserAndInvite: createUserAndInvite ? true : false,
       };
-      const res = await api.post<{ companyId: string; inviteLink?: string }>('/admin/clients', payload);
+      const res = await api.post<{
+        companyId: string;
+        inviteLink?: string;
+        inviteEmailSent?: boolean;
+      }>('/admin/clients', payload);
       if (res.inviteLink) {
-        navigator.clipboard.writeText(res.inviteLink);
-        toast.success('Client created. Invite link copied to clipboard.', { duration: 5000 });
+        if (res.inviteEmailSent === false) {
+          toast.error(
+            'Client created, but the onboarding email could not be sent. Check your email (SMTP) settings, or resend the invite from the client record.',
+            { duration: 7000 }
+          );
+        } else {
+          toast.success(
+            `Client created. An onboarding email has been sent to ${email.trim()}. They should check their inbox and spam or junk folder.`,
+            { duration: 6000 }
+          );
+        }
       } else {
         toast.success('Client created successfully.');
       }

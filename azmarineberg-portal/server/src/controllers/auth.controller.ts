@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as authService from '../services/auth.service.js';
+import { sendEmail } from '../services/EmailService.js';
+import { renderPasswordResetTemplate } from '../email/templates/passwordReset.template.js';
 
 export async function login(req: Request, res: Response, next: NextFunction) {
   try {
@@ -91,13 +93,23 @@ export async function acceptInvite(req: Request, res: Response) {
 
 export async function setPasswordFromInvite(req: Request, res: Response, next: NextFunction) {
   try {
-    const { token, password } = req.body;
+    const { token, password, confirmPassword } = req.body;
+    if (!password || !confirmPassword) {
+      return res.status(400).json({ error: 'Password and confirmation are required' });
+    }
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+    const passwordError = authService.validatePasswordStrength(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
     const invite = await authService.validateInviteToken(token);
     if (!invite) {
       return res.status(400).json({ error: 'Invalid or expired invite link' });
     }
     await authService.setPassword(invite.user_id, password);
-    await authService.markInviteTokenUsed(token);
+    await authService.markInviteTokenUsedById(invite.id);
     const user = await authService.findUserById(invite.user_id);
     const payload = {
       userId: user.id,
@@ -139,12 +151,88 @@ export async function changePassword(req: Request, res: Response, next: NextFunc
       return res.status(401).json({ error: 'Authentication required' });
     }
     const { currentPassword, newPassword } = req.body;
+    const passwordError = authService.validatePasswordStrength(newPassword || '');
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
     const user = await authService.findUserByEmail(req.user.email);
     if (!user || !(await authService.verifyPassword(currentPassword, user.password_hash))) {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
     await authService.setPassword(req.user.userId, newPassword);
     return res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function forgotPassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    const email = String(req.body?.email || '').toLowerCase().trim();
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const genericMessage =
+      'If an account with that email exists, a password reset link has been sent.';
+
+    const user = await authService.findUserByEmail(email);
+    if (!user) {
+      return res.json({ message: genericMessage });
+    }
+
+    const { token, minutesValid } = await authService.createPasswordResetToken(user.id);
+    const appUrl = process.env.APP_URL || 'http://localhost:5173';
+    const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    const template = renderPasswordResetTemplate({ resetUrl, minutesValid });
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
+      });
+    } catch (emailErr) {
+      // Keep response generic to prevent account enumeration via SMTP behavior.
+      console.error('Forgot password email failed:', emailErr);
+    }
+
+    return res.json({ message: genericMessage });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resetPassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    const token = String(req.body?.token || '').trim();
+    const newPassword = String(req.body?.newPassword || '');
+    const confirmPassword = String(req.body?.confirmPassword || '');
+
+    if (!token) {
+      return res.status(400).json({ error: 'Reset token is required' });
+    }
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'New password and confirmation are required' });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+    const passwordError = authService.validatePasswordStrength(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
+
+    const tokenRow = await authService.getValidPasswordResetToken(token);
+    if (!tokenRow) {
+      return res.status(400).json({ error: 'Invalid or expired reset link' });
+    }
+
+    await authService.setPassword(tokenRow.user_id, newPassword);
+    await authService.consumePasswordResetToken(tokenRow.id, tokenRow.user_id);
+
+    return res.json({ message: 'Password reset successful. Please sign in.' });
   } catch (err) {
     next(err);
   }

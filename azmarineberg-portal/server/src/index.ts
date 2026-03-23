@@ -1,10 +1,11 @@
 import 'dotenv/config';
+import dns from 'node:dns';
 import express, { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
-import { startExpiryCron } from './jobs/expiryNotifications.js';
-import { startReportRemindersCron } from './jobs/reportReminders.js';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { startExpiryCron } from './jobs/expiryNotifications.js';
+import { startReportRemindersCron } from './jobs/reportReminders.js';
 import authRoutes from './routes/auth.routes.js';
 import clientsRoutes from './routes/clients.routes.js';
 import adminRoutes from './routes/admin.routes.js';
@@ -16,6 +17,10 @@ import messagesRoutes from './routes/messages.routes.js';
 import reportsRoutes from './routes/reports.routes.js';
 import { authenticate } from './middleware/auth.js';
 import { pool } from './db/pool.js';
+import { isSmtpConfigured } from './services/EmailService.js';
+
+// Outbound SMTP (SendGrid): prefer IPv4 — some hosts (e.g. Render) hit ETIMEDOUT on IPv6.
+dns.setDefaultResultOrder('ipv4first');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,11 +28,17 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(helmet({ contentSecurityPolicy: false }));
 
+const corsExtra = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
   process.env.APP_URL,
+  ...corsExtra,
 ].filter((o): o is string => Boolean(o));
 
 app.use(
@@ -138,6 +149,14 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  if (isProduction && !isSmtpConfigured()) {
+    console.warn(
+      '\n[EMAIL] SMTP is not fully configured — password reset and onboarding emails will fail.\n' +
+        '    Required: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM\n' +
+        '    Optional: SMTP_SECURE=true (use with port 465 if 587 times out)\n' +
+        '    Docs: server/.env.example\n'
+    );
+  }
   startExpiryCron();
   startReportRemindersCron();
 });

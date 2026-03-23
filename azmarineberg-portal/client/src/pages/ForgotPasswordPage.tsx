@@ -58,15 +58,7 @@ export default function ForgotPasswordPage() {
         <p className="text-gray-600 mb-6">Enter your email to receive a reset link.</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error ? <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div> : null}
-          {success ? (
-            <div className="space-y-2">
-              <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{success}</div>
-              <p className="text-xs text-gray-500">
-                After 2 minutes of inactivity, you will be redirected to the client login page. Moving the mouse or typing
-                resets this timer.
-              </p>
-            </div>
-          ) : null}
+          {success ? <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{success}</div> : null}
           <div>
             <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700 mb-1">
               Email

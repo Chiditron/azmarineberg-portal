@@ -1,4 +1,4 @@
-const API_BASE = "https://azmarineberg-portal.onrender.com/api";
+const API_BASE = 'https://azmarineberg-portal.onrender.com/api';
 
 async function getToken(): Promise<string | null> {
   return localStorage.getItem('accessToken');
@@ -33,7 +33,15 @@ async function request<T>(
           body: JSON.stringify({ refreshToken }),
         });
         if (refreshRes.ok) {
-          const data = await refreshRes.json();
+          const data = await refreshRes.json().catch(() => null);
+          if (
+            !data ||
+            typeof data !== 'object' ||
+            typeof (data as { accessToken?: unknown }).accessToken !== 'string' ||
+            typeof (data as { refreshToken?: unknown }).refreshToken !== 'string'
+          ) {
+            throw new Error('Invalid refresh response');
+          }
           localStorage.setItem('accessToken', data.accessToken);
           localStorage.setItem('refreshToken', data.refreshToken);
           return request(path, options);
@@ -61,20 +69,66 @@ async function request<T>(
     return undefined as T;
   }
 
-  return res.json();
+  try {
+    return await res.json();
+  } catch {
+    throw new Error(`Invalid response from server (${res.status})`);
+  }
 }
 
 export const api = {
   async login(email: string, password: string) {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-      credentials: 'include',
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Login failed');
-    return data;
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      });
+    } catch {
+      throw new Error(
+        'Cannot reach the API. From the portal folder run `npm run dev` (starts client + server), or ensure the server is on port 3000.'
+      );
+    }
+    const raw = await res.json().catch(() => null);
+    if (!res.ok) {
+      const errMsg =
+        raw && typeof raw === 'object' && 'error' in raw && typeof (raw as { error: unknown }).error === 'string'
+          ? (raw as { error: string }).error
+          : null;
+      throw new Error(
+        errMsg ||
+        (res.status >= 502 && res.status <= 504
+          ? 'API unavailable (bad gateway). Is the backend running on port 3000?'
+          : `Login failed (${res.status})`)
+      );
+    }
+    if (
+      !raw ||
+      typeof raw !== 'object' ||
+      typeof (raw as { accessToken?: unknown }).accessToken !== 'string' ||
+      typeof (raw as { refreshToken?: unknown }).refreshToken !== 'string' ||
+      typeof (raw as { user?: unknown }).user !== 'object' ||
+      (raw as { user: unknown }).user === null
+    ) {
+      throw new Error('Invalid login response from server.');
+    }
+    return raw as {
+      user: {
+        id: string;
+        email: string;
+        role: string;
+        companyId: string | null;
+        mustChangePassword?: boolean;
+        firstName?: string | null;
+        lastName?: string | null;
+        companyName?: string | null;
+      };
+      accessToken: string;
+      refreshToken: string;
+      expiresIn?: number;
+    };
   },
 
   async getCurrentUser() {
@@ -89,6 +143,20 @@ export const api = {
         companyName?: string | null;
       };
     }>('/auth/me');
+  },
+
+  async forgotPassword(email: string) {
+    return request<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async resetPassword(token: string, newPassword: string, confirmPassword: string) {
+    return request<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword, confirmPassword }),
+    });
   },
 
   get: <T>(path: string) => request<T>(path),
@@ -156,7 +224,11 @@ export const api = {
       return request<{ rows: MessageListItem[]; total: number }>(`/messages?${sp.toString()}`);
     },
     get(id: string) {
-      return request<{ message: MessageThreadItem; thread: MessageThreadItem[] }>(`/messages/${id}`);
+      return request<{
+        message: MessageThreadItem;
+        thread: MessageThreadItem[];
+        bulk?: { recipientCount: number };
+      }>(`/messages/${id}`);
     },
     send(body: SendMessageBody) {
       return request<{ id?: string; ids?: string[]; count?: number }>('/messages', { method: 'POST', body: JSON.stringify(body) });
@@ -187,6 +259,8 @@ export interface MessageListItem {
   senderDisplay?: string;
   recipientId?: string;
   recipientDisplay?: string;
+  isBulk?: boolean;
+  bulkRecipientCount?: number;
 }
 
 export interface MessageThreadItem {

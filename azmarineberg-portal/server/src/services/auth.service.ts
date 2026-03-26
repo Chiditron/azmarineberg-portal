@@ -1,11 +1,38 @@
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../db/pool.js';
 import type { AuthPayload } from '../middleware/auth.js';
 import type { UserRole } from '../shared-types.js';
 
 const SALT_ROUNDS = 10;
+const DEFAULT_PASSWORD_RESET_TTL_MINUTES = 20;
+const DEFAULT_INVITE_TOKEN_TTL_HOURS = 48;
+
+export function validatePasswordStrength(password: string): string | null {
+  if (password.length < 8) return 'Password must be at least 8 characters.';
+  if (!/[a-z]/.test(password)) return 'Password must include at least one lowercase letter.';
+  if (!/[A-Z]/.test(password)) return 'Password must include at least one uppercase letter.';
+  if (!/[0-9]/.test(password)) return 'Password must include at least one number.';
+  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must include at least one special character.';
+  return null;
+}
+
+function getPasswordResetTtlMinutes(): number {
+  const raw = parseInt(process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES || '', 10);
+  if (Number.isNaN(raw)) return DEFAULT_PASSWORD_RESET_TTL_MINUTES;
+  return Math.min(Math.max(raw, 15), 30);
+}
+
+function getInviteTokenTtlHours(): number {
+  const raw = parseInt(process.env.INVITE_TOKEN_TTL_HOURS || '', 10);
+  if (Number.isNaN(raw)) return DEFAULT_INVITE_TOKEN_TTL_HOURS;
+  return Math.min(Math.max(raw, 24), 48);
+}
+
+function sha256(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, SALT_ROUNDS);
@@ -89,33 +116,40 @@ export async function getCompanyName(companyId: string | null): Promise<string |
   return result.rows[0]?.company_name ?? null;
 }
 
-export async function createInviteToken(companyId: string, userId: string): Promise<string> {
-  const token = uuidv4();
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
+export async function createInviteToken(companyId: string, userId: string): Promise<{ token: string; expiresAt: Date; hoursValid: number }> {
+  const hoursValid = getInviteTokenTtlHours();
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = sha256(token);
+  const expiresAt = new Date(Date.now() + hoursValid * 60 * 60 * 1000);
   await pool.query(
-    `INSERT INTO invite_tokens (company_id, user_id, token, expires_at)
-     VALUES ($1, $2, $3, $4)`,
-    [companyId, userId, token, expiresAt]
+    `INSERT INTO invite_tokens (company_id, user_id, token, token_hash, expires_at)
+     VALUES ($1, $2, NULL, $3, $4)`,
+    [companyId, userId, tokenHash, expiresAt]
   );
-  return token;
+  return { token, expiresAt, hoursValid };
 }
 
 export async function validateInviteToken(token: string) {
+  const tokenHash = sha256(token);
   const result = await pool.query(
     `SELECT it.id, it.company_id, it.user_id, u.email
      FROM invite_tokens it
      JOIN users u ON u.id = it.user_id
-     WHERE it.token = $1 AND it.expires_at > NOW() AND it.used_at IS NULL`,
-    [token]
+     WHERE (
+         (it.token_hash IS NOT NULL AND it.token_hash = $1)
+         OR (it.token IS NOT NULL AND it.token = $2)
+       )
+       AND it.expires_at > NOW()
+       AND it.used_at IS NULL`,
+    [tokenHash, token]
   );
   return result.rows[0] || null;
 }
 
-export async function markInviteTokenUsed(token: string) {
+export async function markInviteTokenUsedById(inviteTokenId: string) {
   await pool.query(
-    `UPDATE invite_tokens SET used_at = NOW() WHERE token = $1`,
-    [token]
+    `UPDATE invite_tokens SET used_at = NOW() WHERE id = $1`,
+    [inviteTokenId]
   );
 }
 
@@ -125,5 +159,45 @@ export async function setPassword(userId: string, password: string) {
     `UPDATE users SET password_hash = $1, must_change_password = false, updated_at = NOW()
      WHERE id = $2`,
     [hash, userId]
+  );
+}
+
+export async function createPasswordResetToken(userId: string): Promise<{ token: string; expiresAt: Date; minutesValid: number }> {
+  const minutesValid = getPasswordResetTtlMinutes();
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = sha256(token);
+  const expiresAt = new Date(Date.now() + minutesValid * 60 * 1000);
+  await pool.query(
+    `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+     VALUES ($1, $2, $3)`,
+    [userId, tokenHash, expiresAt]
+  );
+  return { token, expiresAt, minutesValid };
+}
+
+export async function getValidPasswordResetToken(token: string): Promise<{ id: string; user_id: string } | null> {
+  const tokenHash = sha256(token);
+  const result = await pool.query(
+    `SELECT id, user_id
+     FROM password_reset_tokens
+     WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+     LIMIT 1`,
+    [tokenHash]
+  );
+  return result.rows[0] || null;
+}
+
+export async function consumePasswordResetToken(tokenRowId: string, userId: string): Promise<void> {
+  await pool.query(
+    `UPDATE password_reset_tokens
+     SET used_at = NOW()
+     WHERE id = $1`,
+    [tokenRowId]
+  );
+  await pool.query(
+    `UPDATE password_reset_tokens
+     SET used_at = COALESCE(used_at, NOW())
+     WHERE user_id = $1 AND used_at IS NULL`,
+    [userId]
   );
 }

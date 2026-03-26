@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
 import StaffLoginPage from './pages/StaffLoginPage';
 import InvitePage from './pages/InvitePage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import ClientDashboard from './pages/ClientDashboard';
 import ClientProfilePage from './pages/ClientProfilePage';
 import ClientServicesPage from './pages/ClientServicesPage';
@@ -58,6 +60,8 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/admin/login" element={<StaffLoginPage />} />
       <Route path="/invite" element={<InvitePage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
         element={
           <ProtectedRoute>

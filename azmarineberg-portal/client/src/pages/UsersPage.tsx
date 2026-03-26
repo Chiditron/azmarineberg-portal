@@ -1,6 +1,15 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../services/api';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../services/api";
+import Table from "../components/ui/Table";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUserCircle, faEdit } from "@fortawesome/free-solid-svg-icons";
+import PageHeader from "../components/ui/PageHeader";
+import SearchSection from "../components/ui/SearchSection";
+import Modal from "../components/ui/Modal";
+import { Formik, Form } from "formik";
+import * as Yup from "yup";
+import { TextLabelInput, SingleSelectInput } from "../components/ui/FormFields";
 
 interface User {
   id: string;
@@ -12,356 +21,291 @@ interface User {
   created_at: string;
 }
 
+const CreateUserSchema = Yup.object().shape({
+  email: Yup.string().email("Invalid email").required("Required"),
+  password: Yup.string().min(8, "Too short").required("Required"),
+  role: Yup.string().required("Required"),
+  first_name: Yup.string(),
+  last_name: Yup.string(),
+  phone: Yup.string(),
+});
+
+const EditUserSchema = Yup.object().shape({
+  role: Yup.string().required("Required"),
+  first_name: Yup.string(),
+  last_name: Yup.string(),
+  phone: Yup.string(),
+});
+
 export default function UsersPage() {
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ['admin-users'],
-    queryFn: () => api.get<User[]>('/admin/users'),
+    queryKey: ["admin-users"],
+    queryFn: () => api.get<User[]>("/admin/users"),
   });
 
+  const filtered = users?.filter(
+    (u) =>
+      !search ||
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      (u.first_name + " " + u.last_name)
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+  );
+
   const createMutation = useMutation({
-    mutationFn: (body: { email: string; password: string; role: string; first_name?: string; last_name?: string; phone?: string }) =>
-      api.post<User>('/admin/users', body),
+    mutationFn: (body: any) => api.post<User>("/admin/users", body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       setShowCreate(false);
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      body,
-    }: {
-      id: string;
-      body: { role?: string; first_name?: string; last_name?: string; phone?: string };
-    }) => api.put<User>(`/admin/users/${id}`, body),
+    mutationFn: ({ id, body }: { id: string; body: any }) =>
+      api.put<User>(`/admin/users/${id}`, body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       setEditing(null);
     },
   });
 
+  const columns = ["Name", "Email", "Phone", "Role", "Created", "Action"];
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <h2 className="text-2xl font-bold text-gray-900">Users</h2>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
-        >
-          Add User
-        </button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Users"
+        description="Manage portal administrators, staff, and their access levels"
+      />
 
-      <CreateUserModal
-        open={showCreate}
+      <SearchSection
+        searchValue={search}
+        onSearchChange={setSearch}
+        actionLabel="Add User"
+        onActionClick={() => setShowCreate(true)}
+        placeholder="Search users by name or email..."
+      />
+
+      {/* Create User Modal */}
+      <Modal
+        isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        onSubmit={(data) => createMutation.mutate(data)}
-        error={createMutation.error instanceof Error ? createMutation.error.message : ''}
-        loading={createMutation.isPending}
-      />
+        title="Add New User"
+        description="Create a new administrative account"
+        width="max-w-3xl"
+      >
+        <Formik
+          initialValues={{
+            email: "",
+            password: "",
+            role: "staff",
+            first_name: "",
+            last_name: "",
+            phone: "",
+          }}
+          validationSchema={CreateUserSchema}
+          onSubmit={async (values, { setSubmitting, setStatus }) => {
+            try {
+              await createMutation.mutateAsync(values);
+              setShowCreate(false);
+            } catch (err) {
+              setStatus(err instanceof Error ? err.message : "Creation failed");
+            } finally {
+              setSubmitting(false);
+            }
+          }}
+        >
+          {({ isSubmitting, status }) => (
+            <Form className="space-y-5 font-lato">
+              {status && (
+                <div className="p-4 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100 font-medium">
+                  {status}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <TextLabelInput
+                  label="First Name"
+                  name="first_name"
+                  placeholder="John"
+                />
+                <TextLabelInput
+                  label="Last Name"
+                  name="last_name"
+                  placeholder="Doe"
+                />
+              </div>
+              <TextLabelInput
+                label="Email Address *"
+                name="email"
+                type="email"
+                placeholder="user@azmarineberg.com"
+              />
+              <TextLabelInput
+                label="Password *"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+              />
+              <TextLabelInput
+                label="Phone Number"
+                name="phone"
+                placeholder="+234..."
+              />
+              <SingleSelectInput
+                label="Role *"
+                name="role"
+                options={[
+                  { value: "super_admin", label: "Super Admin" },
+                  { value: "admin", label: "Admin" },
+                  { value: "staff", label: "Staff" },
+                ]}
+              />
+              <div className="pt-6 border-t border-gray-100">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-4 bg-primary text-white rounded-xl font-bold font-poppins shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50"
+                >
+                  {isSubmitting ? "Creating..." : "Create User"}
+                </button>
+              </div>
+            </Form>
+          )}
+        </Formik>
+      </Modal>
 
-      <EditUserModal
-        open={!!editing}
+      {/* Edit User Modal */}
+      <Modal
+        isOpen={!!editing}
         onClose={() => setEditing(null)}
-        user={editing}
-        onSubmit={(data) => editing && updateMutation.mutate({ id: editing.id, body: data })}
-        error={updateMutation.error instanceof Error ? updateMutation.error.message : ''}
-        loading={updateMutation.isPending}
-      />
+        title="Edit User"
+        description={`Updating access for ${editing?.email}`}
+        width="max-w-3xl"
+      >
+        <Formik
+          initialValues={{
+            role: editing?.role ?? "staff",
+            first_name: editing?.first_name ?? "",
+            last_name: editing?.last_name ?? "",
+            phone: editing?.phone ?? "",
+          }}
+          validationSchema={EditUserSchema}
+          enableReinitialize
+          onSubmit={async (values, { setSubmitting, setStatus }) => {
+            try {
+              if (editing) {
+                await updateMutation.mutateAsync({
+                  id: editing.id,
+                  body: values,
+                });
+              }
+              setEditing(null);
+            } catch (err) {
+              setStatus(err instanceof Error ? err.message : "Update failed");
+            } finally {
+              setSubmitting(false);
+            }
+          }}
+        >
+          {({ isSubmitting, status }) => (
+            <Form className="space-y-5 font-lato">
+              {status && (
+                <div className="p-4 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100 font-medium">
+                  {status}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <TextLabelInput label="First Name" name="first_name" />
+                <TextLabelInput label="Last Name" name="last_name" />
+              </div>
+              <TextLabelInput label="Phone Number" name="phone" />
+              <SingleSelectInput
+                label="Role *"
+                name="role"
+                options={[
+                  { value: "super_admin", label: "Super Admin" },
+                  { value: "admin", label: "Admin" },
+                  { value: "staff", label: "Staff" },
+                ]}
+              />
+              <div className="pt-6 border-t border-gray-100">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-4 bg-primary text-white rounded-xl font-bold font-poppins shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50"
+                >
+                  {isSubmitting ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </Form>
+          )}
+        </Formik>
+      </Modal>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {isLoading ? (
-          <div className="p-8 text-center text-gray-500">Loading...</div>
-        ) : !users?.length ? (
-          <div className="p-8 text-center text-gray-500">No users found.</div>
-        ) : (
-          <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">First Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Last Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Email</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Phone</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Role</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Created</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm">{u.first_name ?? '-'}</td>
-                  <td className="px-6 py-4 text-sm">{u.last_name ?? '-'}</td>
-                  <td className="px-6 py-4 text-sm font-medium">{u.email}</td>
-                  <td className="px-6 py-4 text-sm">{u.phone ?? '-'}</td>
-                  <td className="px-6 py-4 text-sm capitalize">{u.role?.replace('_', ' ')}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto hide_scrollbar">
+          {isLoading ? (
+            <div className="p-20 text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-gray-500 font-medium font-lato">
+                Loading users...
+              </p>
+            </div>
+          ) : !filtered?.length ? (
+            <div className="p-20 text-center">
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                <FontAwesomeIcon icon={faUserCircle} className="text-2xl" />
+              </div>
+              <p className="text-gray-500 font-bold font-poppins">
+                No users found
+              </p>
+            </div>
+          ) : (
+            <Table columns={columns}>
+              {filtered.map((u, index) => (
+                <tr
+                  key={u.id}
+                  className="hover:bg-blue-50/30 transition-colors border-b border-gray-50 last:border-0 font-lato"
+                >
+                  <td className="px-5 py-4 text-sm font-semibold text-gray-400">
+                    {index + 1}
+                  </td>
+                  <td className="px-5 py-4 font-bold text-gray-900">
+                    {u.first_name} {u.last_name}
+                  </td>
+                  <td className="px-5 py-4 text-sm text-gray-600 font-medium">
+                    {u.email}
+                  </td>
+                  <td className="px-5 py-4 text-sm text-gray-600">
+                    {u.phone ?? "-"}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className="capitalize px-2.5 py-1 bg-gray-100 rounded-lg text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                      {u.role?.replace("_", " ")}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-sm text-gray-500 font-medium">
                     {new Date(u.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 text-sm">
-                    <button onClick={() => setEditing(u)} className="text-primary hover:underline">
-                      Edit
+                  <td className="px-5 py-4 text-sm">
+                    <button
+                      onClick={() => setEditing(u)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                      title="Edit"
+                    >
+                      <FontAwesomeIcon icon={faEdit} className="text-xs" />
                     </button>
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CreateUserModal({
-  open,
-  onClose,
-  onSubmit,
-  error,
-  loading,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (data: { email: string; password: string; role: string; first_name?: string; last_name?: string; phone?: string }) => void;
-  error: string;
-  loading: boolean;
-}) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [role, setRole] = useState('staff');
-
-  useEffect(() => {
-    if (open) {
-      setEmail('');
-      setPassword('');
-      setFirstName('');
-      setLastName('');
-      setPhone('');
-      setRole('staff');
-    }
-  }, [open]);
-
-  if (!open) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !password) return;
-    onSubmit({
-      email: email.trim(),
-      password,
-      role,
-      first_name: firstName.trim() || undefined,
-      last_name: lastName.trim() || undefined,
-      phone: phone.trim() || undefined,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <div className="p-6 border-b flex justify-between items-center">
-          <h3 className="text-lg font-semibold">Add User</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">
-            ×
-          </button>
+            </Table>
+          )}
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && <div className="p-3 bg-red-50 text-red-700 rounded text-sm">{error}</div>}
-          <div>
-            <label className="block text-sm font-medium mb-1">First Name</label>
-            <input
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Last Name</label>
-            <input
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Email *</label>
-            <input
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Password *</label>
-            <input
-              required
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-              placeholder="Min 8 chars, uppercase, lowercase, number, special"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Phone</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Role *</label>
-            <select
-              required
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            >
-              <option value="super_admin">Super Admin</option>
-              <option value="admin">Admin</option>
-              <option value="staff">Staff</option>
-            </select>
-          </div>
-          <div className="flex gap-2 pt-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark disabled:opacity-50"
-            >
-              {loading ? 'Creating...' : 'Create'}
-            </button>
-            <button type="button" onClick={onClose} className="px-4 py-2 border rounded">
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function EditUserModal({
-  open,
-  onClose,
-  user,
-  onSubmit,
-  error,
-  loading,
-}: {
-  open: boolean;
-  onClose: () => void;
-  user: User | null;
-  onSubmit: (data: { role?: string; first_name?: string; last_name?: string; phone?: string }) => void;
-  error: string;
-  loading: boolean;
-}) {
-  const [role, setRole] = useState(user?.role ?? 'staff');
-  const [firstName, setFirstName] = useState(user?.first_name ?? '');
-  const [lastName, setLastName] = useState(user?.last_name ?? '');
-  const [phone, setPhone] = useState(user?.phone ?? '');
-
-  useEffect(() => {
-    if (open && user) {
-      setRole(user.role);
-      setFirstName(user.first_name ?? '');
-      setLastName(user.last_name ?? '');
-      setPhone(user.phone ?? '');
-    }
-  }, [open, user]);
-
-  if (!open || !user) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({
-      role,
-      first_name: firstName.trim() || undefined,
-      last_name: lastName.trim() || undefined,
-      phone: phone.trim() || undefined,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <div className="p-6 border-b flex justify-between items-center">
-          <h3 className="text-lg font-semibold">Edit User</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">
-            ×
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && <div className="p-3 bg-red-50 text-red-700 rounded text-sm">{error}</div>}
-          <p className="text-sm text-gray-600">{user.email}</p>
-          <div>
-            <label className="block text-sm font-medium mb-1">First Name</label>
-            <input
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Last Name</label>
-            <input
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Phone</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Role *</label>
-            <select
-              required
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            >
-              <option value="super_admin">Super Admin</option>
-              <option value="admin">Admin</option>
-              <option value="staff">Staff</option>
-            </select>
-          </div>
-          <div className="flex gap-2 pt-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark disabled:opacity-50"
-            >
-              {loading ? 'Saving...' : 'Save'}
-            </button>
-            <button type="button" onClick={onClose} className="px-4 py-2 border rounded">
-              Cancel
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );

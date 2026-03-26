@@ -6,6 +6,7 @@ import PDFDocument from 'pdfkit';
 const EXPORT_MAX_ROWS = 10_000;
 
 export interface ReportRow {
+  serviceId: string;
   facility: string;
   address: string;
   sector: string;
@@ -49,6 +50,7 @@ function buildReportWhere(
 
 const REPORT_SELECT = `
   SELECT
+    s.id AS service_id,
     f.facility_name AS facility,
     f.facility_address AS address,
     COALESCE(ins.name, c.industry_sector) AS sector,
@@ -107,7 +109,17 @@ export async function listReport(req: Request, res: Response) {
     params
   );
 
-  res.json({ rows: dataResult.rows as ReportRow[], total });
+  const rows = dataResult.rows.map((r) => ({
+    serviceId: r.service_id,
+    facility: r.facility,
+    address: r.address,
+    sector: r.sector,
+    service: r.service,
+    regulator: r.regulator,
+    status: r.status,
+  })) as ReportRow[];
+
+  res.json({ rows, total });
 }
 
 export async function exportReport(req: Request, res: Response) {

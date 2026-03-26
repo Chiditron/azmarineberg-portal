@@ -1,5 +1,13 @@
-import { Request, Response } from 'express';
+import { randomUUID } from 'crypto';
+import { Request, Response, NextFunction } from 'express';
 import { pool } from '../db/pool.js';
+
+/** notifications.title is VARCHAR(255); messages.subject can be longer */
+function truncateNotificationTitle(text: string, maxLen = 255): string {
+  const t = text.trim();
+  if (t.length <= maxLen) return t;
+  return `${t.slice(0, maxLen - 1)}…`;
+}
 
 function displayName(row: { first_name?: string | null; last_name?: string | null; email?: string; company_name?: string | null }) {
   const first = row?.first_name ?? '';
@@ -54,14 +62,30 @@ export async function listMessages(req: Request, res: Response) {
   }
 
   const result = await pool.query(
-    `SELECT m.id, m.subject, m.body, m.read_at, m.created_at, m.parent_id,
-            u.id as recipient_id, u.email as recipient_email, u.first_name as recipient_first_name, u.last_name as recipient_last_name,
-            c.company_name as recipient_company_name
-     FROM messages m
+    `WITH grp AS (
+       SELECT
+         COALESCE(m.broadcast_group_id::text, m.id::text) AS grp_key,
+         (MIN(m.id::text))::uuid AS id,
+         MAX(m.created_at) AS created_at,
+         MAX(m.subject) AS subject,
+         MAX(m.body) AS body,
+         MAX(m.read_at) AS read_at,
+         (MIN(m.parent_id::text))::uuid AS parent_id,
+         BOOL_OR(m.broadcast_group_id IS NOT NULL) AS is_bulk,
+         COUNT(*)::int AS bulk_recipient_count
+       FROM messages m
+       WHERE m.sender_id = $1
+       GROUP BY COALESCE(m.broadcast_group_id::text, m.id::text)
+     )
+     SELECT g.id, g.subject, g.body, g.read_at, g.created_at, g.parent_id,
+            g.is_bulk, g.bulk_recipient_count,
+            u.id AS recipient_id, u.email AS recipient_email, u.first_name AS recipient_first_name,
+            u.last_name AS recipient_last_name, c.company_name AS recipient_company_name
+     FROM grp g
+     JOIN messages m ON m.id = g.id
      JOIN users u ON u.id = m.recipient_id
      LEFT JOIN companies c ON c.id = u.company_id
-     WHERE m.sender_id = $1
-     ORDER BY m.created_at DESC
+     ORDER BY g.created_at DESC
      LIMIT $2 OFFSET $3`,
     [userId, limit, offset]
   );
@@ -72,19 +96,27 @@ export async function listMessages(req: Request, res: Response) {
     readAt: r.read_at,
     createdAt: r.created_at,
     parentId: r.parent_id,
-    recipientId: r.recipient_id,
-    recipientDisplay: displayName({
-      first_name: r.recipient_first_name,
-      last_name: r.recipient_last_name,
-      email: r.recipient_email,
-      company_name: r.recipient_company_name,
-    }),
+    recipientId: r.is_bulk ? undefined : r.recipient_id,
+    recipientDisplay: r.is_bulk
+      ? `Bulk · ${r.bulk_recipient_count} clients`
+      : displayName({
+          first_name: r.recipient_first_name,
+          last_name: r.recipient_last_name,
+          email: r.recipient_email,
+          company_name: r.recipient_company_name,
+        }),
+    isBulk: r.is_bulk,
+    bulkRecipientCount: r.is_bulk ? r.bulk_recipient_count : undefined,
   }));
   const countResult = await pool.query(
-    'SELECT COUNT(*)::int FROM messages WHERE sender_id = $1',
+    `SELECT (
+       (SELECT COUNT(*)::int FROM messages WHERE sender_id = $1 AND broadcast_group_id IS NULL)
+       +
+       (SELECT COUNT(DISTINCT broadcast_group_id)::int FROM messages WHERE sender_id = $1 AND broadcast_group_id IS NOT NULL)
+     ) AS total`,
     [userId]
   );
-  return res.json({ rows, total: countResult.rows[0].count });
+  return res.json({ rows, total: countResult.rows[0].total });
 }
 
 export async function getMessage(req: Request, res: Response) {
@@ -93,6 +125,7 @@ export async function getMessage(req: Request, res: Response) {
 
   const msg = await pool.query(
     `SELECT m.id, m.sender_id, m.recipient_id, m.subject, m.body, m.parent_id, m.read_at, m.created_at,
+            m.broadcast_group_id,
             su.email as sender_email, su.first_name as sender_first_name, su.last_name as sender_last_name, sc.company_name as sender_company_name,
             ru.email as recipient_email, ru.first_name as recipient_first_name, ru.last_name as recipient_last_name, rc.company_name as recipient_company_name
      FROM messages m
@@ -157,7 +190,21 @@ export async function getMessage(req: Request, res: Response) {
     }),
   }));
 
-  return res.json({ message: thread[0], thread });
+  const out: {
+    message: (typeof thread)[0];
+    thread: typeof thread;
+    bulk?: { recipientCount: number };
+  } = { message: thread[0], thread };
+
+  if (m.sender_id === userId && m.broadcast_group_id) {
+    const countR = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM messages WHERE broadcast_group_id = $1 AND sender_id = $2`,
+      [m.broadcast_group_id, userId]
+    );
+    out.bulk = { recipientCount: countR.rows[0].n };
+  }
+
+  return res.json(out);
 }
 
 async function resolveRootId(parentId: string): Promise<string | null> {
@@ -167,102 +214,113 @@ async function resolveRootId(parentId: string): Promise<string | null> {
   return r.rows[0].id;
 }
 
-export async function sendMessage(req: Request, res: Response) {
-  const userId = req.user!.userId;
-  const role = req.user!.role;
-  const {
-    recipientType,
-    recipientId,
-    companyId,
-    broadcastToAllClients,
-    subject,
-    body,
-    parentId,
-  } = req.body;
+export async function sendMessage(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.userId;
+    const role = req.user!.role;
+    const {
+      recipientType,
+      recipientId,
+      companyId,
+      broadcastToAllClients,
+      subject,
+      body,
+      parentId,
+    } = req.body;
 
-  if (parentId) {
-    const parent = await pool.query(
-      'SELECT id, sender_id, recipient_id, subject FROM messages WHERE id = $1',
-      [parentId]
-    );
-    if (!parent.rows[0]) return res.status(404).json({ error: 'Parent message not found' });
-    const p = parent.rows[0];
-    if (p.recipient_id !== userId && p.sender_id !== userId) {
-      return res.status(403).json({ error: 'Access denied' });
+    if (parentId) {
+      const parent = await pool.query(
+        'SELECT id, sender_id, recipient_id, subject FROM messages WHERE id = $1',
+        [parentId]
+      );
+      if (!parent.rows[0]) return res.status(404).json({ error: 'Parent message not found' });
+      const p = parent.rows[0];
+      if (p.recipient_id !== userId && p.sender_id !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      const replyRecipient = p.sender_id === userId ? p.recipient_id : p.sender_id;
+      const subjectRe = (p.subject || '').startsWith('Re:') ? p.subject : `Re: ${p.subject}`;
+      const notifTitle = truncateNotificationTitle(subjectRe);
+      const insertResult = await pool.query(
+        `INSERT INTO messages (sender_id, recipient_id, subject, body, parent_id)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id`,
+        [userId, replyRecipient, subjectRe, body || '', parentId]
+      );
+      const newId = insertResult.rows[0].id;
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type, entity_type, entity_id)
+         VALUES ($1, $2, $3, 'message', 'message', $4)`,
+        [replyRecipient, notifTitle, body || '', newId]
+      );
+      return res.status(201).json({ id: newId });
     }
-    const replyRecipient = p.sender_id === userId ? p.recipient_id : p.sender_id;
-    const subjectRe = (p.subject || '').startsWith('Re:') ? p.subject : `Re: ${p.subject}`;
-    const insertResult = await pool.query(
-      `INSERT INTO messages (sender_id, recipient_id, subject, body, parent_id)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id`,
-      [userId, replyRecipient, subjectRe, body || '', parentId]
-    );
-    const newId = insertResult.rows[0].id;
-    await pool.query(
-      `INSERT INTO notifications (user_id, title, message, type, entity_type, entity_id)
-       VALUES ($1, $2, $3, 'message', 'message', $4)`,
-      [replyRecipient, subjectRe, body || '', newId]
-    );
-    return res.status(201).json({ id: newId });
-  }
 
-  if (!['admin', 'staff', 'super_admin'].includes(role)) {
-    return res.status(403).json({ error: 'Only staff can send new messages. Clients can reply only.' });
-  }
-  if (!subject || typeof subject !== 'string' || !subject.trim()) {
-    return res.status(400).json({ error: 'Subject is required' });
-  }
+    if (!['admin', 'staff', 'super_admin'].includes(role)) {
+      return res.status(403).json({ error: 'Only staff can send new messages. Clients can reply only.' });
+    }
+    if (!subject || typeof subject !== 'string' || !subject.trim()) {
+      return res.status(400).json({ error: 'Subject is required' });
+    }
 
-  let recipientUserIds: string[] = [];
+    let recipientUserIds: string[] = [];
 
-  if (recipientType === 'staff') {
-    if (!recipientId) return res.status(400).json({ error: 'Recipient is required for staff' });
-    const u = await pool.query(
-      "SELECT id FROM users WHERE id = $1 AND role IN ('super_admin','admin','staff')",
-      [recipientId]
-    );
-    if (!u.rows[0]) return res.status(400).json({ error: 'Invalid staff recipient' });
-    recipientUserIds = [recipientId];
-  } else if (recipientType === 'client') {
-    if (broadcastToAllClients) {
-      const all = await pool.query(
-        "SELECT id FROM users WHERE role = 'client'"
+    if (recipientType === 'staff') {
+      if (!recipientId) return res.status(400).json({ error: 'Recipient is required for staff' });
+      const u = await pool.query(
+        "SELECT id FROM users WHERE id = $1 AND role IN ('super_admin','admin','staff')",
+        [recipientId]
       );
-      recipientUserIds = all.rows.map((r) => r.id);
-    } else if (companyId) {
-      const clients = await pool.query(
-        "SELECT id FROM users WHERE company_id = $1 AND role = 'client'",
-        [companyId]
-      );
-      recipientUserIds = clients.rows.map((r) => r.id);
-      if (recipientUserIds.length === 0) {
-        return res.status(400).json({ error: 'No client users found for this company' });
+      if (!u.rows[0]) return res.status(400).json({ error: 'Invalid staff recipient' });
+      recipientUserIds = [recipientId];
+    } else if (recipientType === 'client') {
+      if (broadcastToAllClients) {
+        const all = await pool.query(
+          "SELECT id FROM users WHERE role = 'client'"
+        );
+        recipientUserIds = all.rows.map((r) => r.id);
+        if (recipientUserIds.length === 0) {
+          return res.status(400).json({ error: 'No client users in the system. Add client accounts before sending bulk messages.' });
+        }
+      } else if (companyId) {
+        const clients = await pool.query(
+          "SELECT id FROM users WHERE company_id = $1 AND role = 'client'",
+          [companyId]
+        );
+        recipientUserIds = clients.rows.map((r) => r.id);
+        if (recipientUserIds.length === 0) {
+          return res.status(400).json({ error: 'No client users found for this company' });
+        }
+      } else {
+        return res.status(400).json({ error: 'Select one client (company) or bulk (all clients)' });
       }
     } else {
-      return res.status(400).json({ error: 'Select one client (company) or bulk (all clients)' });
+      return res.status(400).json({ error: 'Invalid recipient type. Use staff or client.' });
     }
-  } else {
-    return res.status(400).json({ error: 'Invalid recipient type. Use staff or client.' });
-  }
 
-  const createdIds: string[] = [];
-  for (const rid of recipientUserIds) {
-    const ins = await pool.query(
-      `INSERT INTO messages (sender_id, recipient_id, subject, body)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id`,
-      [userId, rid, subject.trim(), body || '']
-    );
-    const mid = ins.rows[0].id;
-    createdIds.push(mid);
-    await pool.query(
-      `INSERT INTO notifications (user_id, title, message, type, entity_type, entity_id)
-       VALUES ($1, $2, $3, 'message', 'message', $4)`,
-      [rid, subject.trim(), body || '', mid]
-    );
+    const subjectTrim = subject.trim();
+    const notifTitle = truncateNotificationTitle(subjectTrim);
+    const broadcastGroupId = recipientUserIds.length > 1 ? randomUUID() : null;
+    const createdIds: string[] = [];
+    for (const rid of recipientUserIds) {
+      const ins = await pool.query(
+        `INSERT INTO messages (sender_id, recipient_id, subject, body, broadcast_group_id)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id`,
+        [userId, rid, subjectTrim, body || '', broadcastGroupId]
+      );
+      const mid = ins.rows[0].id;
+      createdIds.push(mid);
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type, entity_type, entity_id)
+         VALUES ($1, $2, $3, 'message', 'message', $4)`,
+        [rid, notifTitle, body || '', mid]
+      );
+    }
+    return res.status(201).json({ ids: createdIds, count: createdIds.length });
+  } catch (err) {
+    next(err);
   }
-  return res.status(201).json({ ids: createdIds, count: createdIds.length });
 }
 
 export async function markMessageRead(req: Request, res: Response) {

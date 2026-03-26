@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS invite_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID NOT NULL,
   user_id UUID REFERENCES users(id),
-  token VARCHAR(255) UNIQUE NOT NULL,
+  token VARCHAR(255),
+  token_hash TEXT,
   expires_at TIMESTAMPTZ NOT NULL,
   used_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -185,5 +186,23 @@ CREATE INDEX IF NOT EXISTS idx_expiry_alerts_service_id ON expiry_alerts(service
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_id ON audit_logs(actor_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
-CREATE INDEX IF NOT EXISTS idx_invite_tokens_token ON invite_tokens(token);
+
+-- Invite tokens: keep legacy DBs compatible (CREATE TABLE IF NOT EXISTS won't add new columns)
+ALTER TABLE invite_tokens
+  ADD COLUMN IF NOT EXISTS token_hash TEXT;
+
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'invite_tokens'
+      AND column_name = 'token'
+      AND is_nullable = 'NO'
+  ) THEN
+    ALTER TABLE invite_tokens ALTER COLUMN token DROP NOT NULL;
+  END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_invite_tokens_token_unique ON invite_tokens(token) WHERE token IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_invite_tokens_token_hash_unique ON invite_tokens(token_hash) WHERE token_hash IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_invite_tokens_expires_at ON invite_tokens(expires_at);

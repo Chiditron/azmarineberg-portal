@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useState } from 'react';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
+import TableWrapper from '../components/TableWrapper';
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
@@ -141,40 +142,67 @@ export default function ServiceDetailPage() {
         ← Back
       </button>
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-between items-start mb-6">
-          <div>
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:justify-between md:items-start md:gap-6">
+          <div className="min-w-0 flex-1">
             <h2 className="text-xl font-bold">{service.service_type?.name ?? service.service_code}</h2>
-            <p className="text-gray-600 mt-1">{service.service_description}</p>
-            <div className="mt-2 flex gap-4 text-sm">
-              <span>Regulator: {service.regulator?.name ?? '-'}</span>
-              <span>Facility: {service.facility?.facility_name ?? '-'}</span>
+            <p className="mt-1 text-gray-600">{service.service_description}</p>
+            <div className="mt-3 flex flex-col gap-2 text-sm md:mt-2 md:flex-row md:flex-wrap md:gap-x-4 md:gap-y-1">
+              <span className="block">
+                <span className="font-medium text-gray-700">Regulator:</span>{' '}
+                {service.regulator?.name ?? '-'}
+              </span>
+              <span className="block">
+                <span className="font-medium text-gray-700">Facility:</span>{' '}
+                {service.facility?.facility_name ?? '-'}
+              </span>
             </div>
           </div>
-          <div className="text-right">
+          <div className="shrink-0 border-t border-gray-100 pt-4 md:border-t-0 md:border-l md:pl-6 md:pt-0 md:text-right">
             <p className={`text-lg font-semibold ${getExpiryColor(service.days_to_expiry ?? 999)}`}>
               {service.days_to_expiry !== undefined ? `${service.days_to_expiry} days to expiry` : 'N/A'}
             </p>
-            <p className="text-sm text-gray-500">Valid until: {new Date(service.validity_end).toLocaleDateString()}</p>
+            <p className="text-sm text-gray-500">
+              Valid until: {new Date(service.validity_end).toLocaleDateString()}
+            </p>
           </div>
         </div>
 
         {canUpdateStatus && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold mb-2">Update Status</h3>
-            <form onSubmit={handleStatusUpdate} className="flex flex-wrap items-end gap-3">
-              <div>
-                <label className="block text-sm mb-1">Status</label>
-                <select name="status" defaultValue={service.status} className="px-3 py-2 border rounded min-w-[180px]">
+          <div className="mb-6 rounded-lg bg-gray-50 p-4">
+            <h3 className="mb-3 font-semibold">Update Status</h3>
+            <form
+              onSubmit={handleStatusUpdate}
+              className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end"
+            >
+              <div className="w-full min-w-0 md:w-auto">
+                <label className="mb-1 block text-sm">Status</label>
+                <select
+                  name="status"
+                  defaultValue={service.status}
+                  className="w-full rounded border px-3 py-2 md:min-w-[180px]"
+                >
                   {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm mb-1">Notes (optional)</label>
-                <input type="text" value={statusNotes} onChange={(e) => setStatusNotes(e.target.value)} placeholder="e.g. Site visit completed" className="px-3 py-2 border rounded min-w-[200px]" />
+              <div className="min-w-0 flex-1 md:min-w-[200px]">
+                <label className="mb-1 block text-sm">Notes (optional)</label>
+                <input
+                  type="text"
+                  value={statusNotes}
+                  onChange={(e) => setStatusNotes(e.target.value)}
+                  placeholder="e.g. Site visit completed"
+                  className="w-full rounded border px-3 py-2"
+                />
               </div>
-              <button type="submit" disabled={statusMutation.isPending} className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark disabled:opacity-50">
+              <button
+                type="submit"
+                disabled={statusMutation.isPending}
+                className="w-full shrink-0 rounded bg-primary px-4 py-2 text-white hover:bg-primary-dark disabled:opacity-50 md:w-auto"
+              >
                 {statusMutation.isPending ? 'Updating...' : 'Update'}
               </button>
             </form>
@@ -222,35 +250,35 @@ export default function ServiceDetailPage() {
           {!documents?.length ? (
             <p className="text-gray-500">No documents yet. Use Upload to add documents.</p>
           ) : (
-            <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Name</th>
-                  <th className="text-left py-2">Type</th>
-                  <th className="text-left py-2">Date</th>
-                  <th className="text-left py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.map((d) => (
-                  <tr key={d.id} className="border-b">
-                    <td className="py-3">{d.file_name}</td>
-                    <td className="py-3 text-sm text-gray-600">{d.document_type.replace(/_/g, ' ')}</td>
-                    <td className="py-3 text-sm">{new Date(d.created_at).toLocaleDateString()}</td>
-                    <td className="py-3 flex gap-3">
-                      <button onClick={() => setPreviewDoc({ id: d.id, fileName: d.file_name })} className="text-primary hover:underline">
-                        Preview
-                      </button>
-                      <button onClick={() => handleDownload(d.id)} className="text-primary hover:underline">
-                        Download
-                      </button>
-                    </td>
+            <TableWrapper>
+              <table className="min-w-full">
+                <thead className="table-thead">
+                  <tr>
+                    <th className="table-th">Name</th>
+                    <th className="table-th">Type</th>
+                    <th className="table-th">Date</th>
+                    <th className="table-th">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
+                </thead>
+                <tbody className="table-tbody">
+                  {documents.map((d) => (
+                    <tr key={d.id}>
+                      <td className="table-td">{d.file_name}</td>
+                      <td className="table-td text-gray-600">{d.document_type.replace(/_/g, ' ')}</td>
+                      <td className="table-td">{new Date(d.created_at).toLocaleDateString()}</td>
+                      <td className="table-td flex gap-3">
+                        <button onClick={() => setPreviewDoc({ id: d.id, fileName: d.file_name })} className="text-primary hover:underline">
+                          Preview
+                        </button>
+                        <button onClick={() => handleDownload(d.id)} className="text-primary hover:underline">
+                          Download
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrapper>
           )}
         </div>
       </div>

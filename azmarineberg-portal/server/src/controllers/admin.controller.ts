@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import { pool } from '../db/pool.js';
 import * as authService from '../services/auth.service.js';
 import * as auditService from '../services/audit.service.js';
-import nodemailer from 'nodemailer';
+import { sendEmail } from '../services/EmailService.js';
+import { renderClientOnboardingTemplate } from '../email/templates/clientOnboarding.template.js';
 
 export async function listFacilities(_req: Request, res: Response) {
   const result = await pool.query(
@@ -148,11 +149,29 @@ export async function createClient(req: Request, res: Response) {
       message: 'Client created successfully',
     };
     if (createUserAndInvite && userId) {
-      const token = await authService.createInviteToken(companyId, userId);
+      const { token, hoursValid } = await authService.createInviteToken(companyId, userId);
       const appUrl = process.env.APP_URL || 'http://localhost:5173';
-      const inviteLink = `${appUrl}/invite?token=${token}`;
+      const inviteLink = `${appUrl}/invite?token=${encodeURIComponent(token)}`;
       response.inviteLink = inviteLink;
       response.inviteToken = token;
+
+      try {
+        const template = renderClientOnboardingTemplate({
+          onboardingUrl: inviteLink,
+          companyName: String(company_name),
+          hoursValid,
+        });
+        await sendEmail({
+          to: String(email),
+          subject: template.subject,
+          html: template.html,
+          text: template.text,
+        });
+        response.inviteEmailSent = true;
+      } catch (mailErr) {
+        console.error('Client onboarding email failed:', mailErr);
+        response.inviteEmailSent = false;
+      }
     }
     res.status(201).json(response);
   } catch (err: unknown) {
@@ -200,25 +219,21 @@ export async function inviteClient(req: Request, res: Response) {
       );
     }
 
-    const token = await authService.createInviteToken(id, userId);
+    const { token, hoursValid } = await authService.createInviteToken(id, userId);
     const appUrl = process.env.APP_URL || 'http://localhost:5173';
-    const inviteLink = `${appUrl}/invite?token=${token}`;
+    const inviteLink = `${appUrl}/invite?token=${encodeURIComponent(token)}`;
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: false,
-      auth: process.env.SMTP_USER ? {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      } : undefined,
-    });
     try {
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || 'noreply@azmarineberg.com',
+      const template = renderClientOnboardingTemplate({
+        onboardingUrl: inviteLink,
+        companyName: String(company.company_name),
+        hoursValid,
+      });
+      await sendEmail({
         to: clientEmail,
-        subject: 'Azmarineberg Client Portal - Invitation',
-        text: `You have been invited to access the Azmarineberg Client Portal for ${company.company_name}.\n\nClick the link below to set your password and log in:\n${inviteLink}\n\nThis link expires in 7 days.`,
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
       });
     } catch (mailErr) {
       console.error('Email send failed:', mailErr);
@@ -494,5 +509,14 @@ export async function addService(req: Request, res: Response) {
       JSON.stringify(documents_required || []),
     ]
   );
-  res.status(201).json({ id: result.rows[0].id });
+  const serviceId = result.rows[0].id;
+  await auditService.log(
+    req.user?.userId ?? null,
+    'add_service',
+    'service',
+    serviceId,
+    { service_type_id, regulator_id, facility_id, status: status || 'draft' },
+    req.ip
+  );
+  res.status(201).json({ id: serviceId });
 }

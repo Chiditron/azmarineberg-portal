@@ -23,7 +23,9 @@ import {
 const SIDEBAR_WIDTH_EXPANDED = 240;
 const SIDEBAR_WIDTH_COLLAPSED = 80;
 
-function NotificationBell() {
+type BellTone = "default" | "onPrimary";
+
+function NotificationBell({ tone = "default" }: { tone?: BellTone }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -54,6 +56,10 @@ function NotificationBell() {
   }, []);
 
   const unreadCount = unreadData?.count ?? 0;
+  const btnTone =
+    tone === "onPrimary"
+      ? "text-white/90 hover:bg-white/15"
+      : "text-gray-600 hover:bg-gray-100";
 
   const handleItemClick = async (n: {
     id: string;
@@ -217,6 +223,11 @@ export default function SidebarLayout() {
     ? SIDEBAR_WIDTH_COLLAPSED
     : SIDEBAR_WIDTH_EXPANDED;
 
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
+      isActive ? "bg-white/25" : "hover:bg-white/15"
+    }`;
+
   return (
     <div className="min-h-screen bg-gray-50 flex font-inter">
       {/* Sidebar */}
@@ -356,6 +367,7 @@ export default function SidebarLayout() {
 
         <div className="p-4 border-t border-gray-100 bg-gray-50/50">
           <button
+            type="button"
             onClick={handleLogoutClick}
             className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-red-500 hover:bg-red-50 font-medium transition-all active:scale-[0.98] ${collapsed ? "justify-center" : ""}`}
           >

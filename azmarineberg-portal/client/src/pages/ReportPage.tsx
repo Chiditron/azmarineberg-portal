@@ -13,6 +13,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 interface ReportRow {
+  serviceId: string;
   facility: string;
   address: string;
   sector: string;

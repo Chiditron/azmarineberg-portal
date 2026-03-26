@@ -33,6 +33,10 @@ export async function listAuditLogs(req: Request, res: Response) {
     params.push(to);
   }
   if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
+  const countQuery = `SELECT COUNT(*)::int AS total FROM audit_logs al${conditions.length ? ' WHERE ' + conditions.join(' AND ') : ''}`;
+  const countResult = await pool.query(countQuery, params);
+  const total = countResult.rows[0]?.total ?? 0;
+
   query += ' ORDER BY al.created_at DESC';
   const limitVal = Math.min(parseInt(limit as string) || 50, 200);
   const offsetVal = Math.max(0, parseInt(offset as string) || 0);
@@ -40,5 +44,5 @@ export async function listAuditLogs(req: Request, res: Response) {
   params.push(limitVal, offsetVal);
 
   const result = await pool.query(query, params);
-  res.json(result.rows);
+  res.json({ rows: result.rows, total });
 }

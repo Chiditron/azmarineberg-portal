@@ -41,7 +41,7 @@ body {
   body {
     @apply bg-gray-50 text-gray-900 text-base antialiased;
   }
-}
+}*/
 
 @layer components {
   /* Reference table design: header #f8f9fa, row borders only, consistent padding */
@@ -81,4 +81,4 @@ body {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-} */
+}

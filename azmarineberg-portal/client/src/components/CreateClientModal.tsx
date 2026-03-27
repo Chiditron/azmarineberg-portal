@@ -8,7 +8,7 @@ import {
 } from "../data/nigerianLocations";
 import { Formik, Form, FieldArray } from "formik";
 import * as Yup from "yup";
-import { TextLabelInput, SingleSelectInput, MyCheckbox } from "./ui/FormFields";
+import { TextLabelInput, SingleSelectInput } from "./ui/FormFields";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import Modal from "./ui/Modal";

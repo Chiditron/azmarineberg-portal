@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../services/api";
-import { useAuth } from "../contexts/AuthContext";
+// import { useAuth } from "../contexts/AuthContext";
 import CreateClientModal from "../components/CreateClientModal";
 import Table from "../components/ui/Table";
 import PageHeader from "../components/ui/PageHeader";
@@ -21,10 +21,10 @@ interface Company {
 }
 
 export default function AdminClients() {
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  const canCreate = user?.role === "admin" || user?.role === "super_admin";
+  // const canCreate = user?.role === "admin" || user?.role === "super_admin";
 
   const {
     data: clients,

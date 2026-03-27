@@ -29,7 +29,7 @@ export default function ClientServicesPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Your Services</h2>
+      <h2 className="text-2xl font-semibold text-gray-900">Your Services</h2>
 
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
         <h3 className="px-6 py-4 border-b border-gray-200 text-lg font-semibold">Services</h3>
@@ -62,7 +62,7 @@ export default function ClientServicesPage() {
                     <td className="table-td">{s.regulator?.name ?? '-'}</td>
                     <td className="table-td">{s.facility?.facility_name ?? '-'}</td>
                     <td className="table-td">
-                      <span className="px-2 py-1 text-xs rounded-full bg-gray-100 capitalize">
+                      <span className="px-2 py-1 text-sm rounded-full bg-gray-100 capitalize">
                         {s.status.replace('_', ' ')}
                       </span>
                     </td>

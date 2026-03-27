@@ -40,28 +40,28 @@ export default function ClientProfilePage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
+      <h2 className="text-2xl font-semibold text-gray-900">Profile</h2>
 
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-bold mb-4">{company.company_name}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-3 text-sm items-start">
-          <p className="text-gray-600"><span className="font-bold text-gray-800">Email:</span> {company.email}</p>
-          {company.phone && <p className="text-gray-600"><span className="font-bold text-gray-800">Phone:</span> {company.phone}</p>}
-          <p className="text-gray-600"><span className="font-bold text-gray-800">Contact Person:</span> {company.contact_person}</p>
-          <p className="text-gray-600"><span className="font-bold text-gray-800">Address:</span> {company.address}</p>
-          {company.lga && <p className="text-gray-600"><span className="font-bold text-gray-800">LGA:</span> {company.lga}</p>}
-          {company.state && <p className="text-gray-600"><span className="font-bold text-gray-800">State:</span> {company.state}</p>}
-          {company.zone && <p className="text-gray-600"><span className="font-bold text-gray-800">Zone:</span> {company.zone}</p>}
-          {company.industry_sector && <p className="text-gray-600"><span className="font-bold text-gray-800">Sector:</span> {company.industry_sector}</p>}
+        <h3 className="text-xl font-semibold mb-4">{company.company_name}</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-3 items-start">
+          <p className="text-gray-600"><span className="font-semibold text-gray-800">Email:</span> {company.email}</p>
+          {company.phone && <p className="text-gray-600"><span className="font-semibold text-gray-800">Phone:</span> {company.phone}</p>}
+          <p className="text-gray-600"><span className="font-semibold text-gray-800">Contact Person:</span> {company.contact_person}</p>
+          <p className="text-gray-600"><span className="font-semibold text-gray-800">Address:</span> {company.address}</p>
+          {company.lga && <p className="text-gray-600"><span className="font-semibold text-gray-800">LGA:</span> {company.lga}</p>}
+          {company.state && <p className="text-gray-600"><span className="font-semibold text-gray-800">State:</span> {company.state}</p>}
+          {company.zone && <p className="text-gray-600"><span className="font-semibold text-gray-800">Zone:</span> {company.zone}</p>}
+          {company.industry_sector && <p className="text-gray-600"><span className="font-semibold text-gray-800">Sector:</span> {company.industry_sector}</p>}
         </div>
         {company.facilities?.length > 0 && (
-          <div className="mt-6 pt-4 border-t">
-            <h4 className="font-semibold text-gray-800 mb-2">Facilities ({company.facilities.length})</h4>
-            <div className="space-y-2">
+          <div className="mt-8 pt-5 border-t">
+            <h4 className="text-xl font-semibold text-gray-800 mb-2">Facilities ({company.facilities.length})</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {company.facilities.map((f) => (
                 <div key={f.id} className="bg-gray-50 rounded-lg p-3">
-                  <p className="font-medium text-gray-900">{f.facility_name}</p>
-                  <p className="text-sm text-gray-600">{f.facility_address}</p>
+                  <p className="text-lg font-medium text-gray-900">{f.facility_name}</p>
+                  <p className="text-gray-600">{f.facility_address}</p>
                 </div>
               ))}
             </div>

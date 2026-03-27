@@ -1,6 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
+const API_BASE = 'https://azmarineberg-portal.onrender.com/api';
 
 async function getToken(): Promise<string | null> {
   return localStorage.getItem('accessToken');
@@ -101,9 +99,9 @@ export const api = {
           : null;
       throw new Error(
         errMsg ||
-          (res.status >= 502 && res.status <= 504
-            ? 'API unavailable (bad gateway). Is the backend running on port 3000?'
-            : `Login failed (${res.status})`)
+        (res.status >= 502 && res.status <= 504
+          ? 'API unavailable (bad gateway). Is the backend running on port 3000?'
+          : `Login failed (${res.status})`)
       );
     }
     if (

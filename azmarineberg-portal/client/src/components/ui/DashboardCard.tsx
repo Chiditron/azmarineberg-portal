@@ -17,9 +17,9 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
 }) => {
   return (
     <div className="bg-white p-6 rounded-2xl flex items-center justify-between transition-all font-lato">
-      <div className="flex flex-col space-y-2">
-        <p className="text-sm text-gray-500 font-semibold">{title}</p>
-        <p className="text-3xl font-extrabold text-gray-900 font-poppins">
+      <div className="flex flex-col space-y-5">
+        <p className="text-gray-500">{title}</p>
+        <p className="text-3xl font-semibold text-gray-900 font-poppins">
           {value}
         </p>
       </div>

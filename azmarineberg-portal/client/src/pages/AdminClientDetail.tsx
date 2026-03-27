@@ -162,7 +162,7 @@ export default function AdminClientDetail() {
                 />
                 Address
               </p>
-              <p className="text-sm font-semibold text-gray-700 leading-relaxed">
+              <p className="font-semibold text-gray-700 leading-relaxed">
                 {client.address}
               </p>
             </div>
@@ -174,7 +174,7 @@ export default function AdminClientDetail() {
                 />
                 LGA / State
               </p>
-              <p className="text-sm font-semibold text-gray-700">
+              <p className="font-semibold text-gray-700">
                 {client.lga || "-"} / {client.state || "-"}
               </p>
             </div>
@@ -186,7 +186,7 @@ export default function AdminClientDetail() {
                 />
                 Zone
               </p>
-              <p className="text-sm font-semibold text-gray-700">
+              <p className="font-semibold text-gray-700">
                 {client.zone || "-"}
               </p>
             </div>
@@ -198,7 +198,7 @@ export default function AdminClientDetail() {
                 />
                 Sector
               </p>
-              <p className="text-xs font-bold px-2 py-1 bg-white border border-gray-200 rounded-lg text-primary inline-block">
+              <p className="font-semibold text-gray-700">
                 {client.industry_sector || "-"}
               </p>
             </div>
@@ -226,7 +226,7 @@ export default function AdminClientDetail() {
             <div className="px-6 pb-6 flex-1">
               {!client.facilities?.length ? (
                 <div className="text-center py-10">
-                  <p className="text-sm text-gray-400 italic">
+                  <p className="text-gray-400 italic">
                     No facilities registered
                   </p>
                 </div>
@@ -245,11 +245,11 @@ export default function AdminClientDetail() {
                           />
                         </div>
                         <div>
-                          <span className="text-sm font-bold text-gray-900 block">
+                          <span className="font-bold text-gray-900 block">
                             {f.facility_name}
                           </span>
                           {f.facility_address && (
-                            <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
+                            <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">
                               {f.facility_address}
                             </p>
                           )}
@@ -301,26 +301,26 @@ export default function AdminClientDetail() {
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 line-clamp-1">
+                          <span className="text-gray-900 line-clamp-1">
                             {s.service_type_name ?? s.service_code}
                           </span>
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                          <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">
                             {s.service_code}
                           </span>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-sm text-gray-600 font-medium">
+                      <td className="px-5 py-4 text-gray-600 font-medium">
                         {s.regulator_name ?? "-"}
                       </td>
-                      <td className="px-5 py-4 text-sm text-gray-600">
+                      <td className="px-5 py-4 text-gray-600">
                         {s.facility_name ?? "-"}
                       </td>
-                      <td className="px-5 py-4 text-sm font-semibold text-gray-700">
+                      <td className="px-5 py-4 font-semibold text-gray-700">
                         {new Date(s.validity_end).toLocaleDateString()}
                       </td>
                       <td className="px-5 py-4">
                         <span
-                          className={`px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase tracking-wider ${statusColors[s.status] || "bg-gray-100 text-gray-600"}`}
+                          className={`px-2.5 py-1 text-xs font-bold rounded-lg uppercase whitespace-nowrap tracking-wider ${statusColors[s.status] || "bg-gray-100 text-gray-600"}`}
                         >
                           {s.status.replace("_", " ")}
                         </span>

@@ -233,13 +233,13 @@ export default function RegulatorsPage() {
                     <span className="text-gray-900 font-medium">{r.name}</span>
                   </td>
                   <td className="px-5 py-4 font-lato">
-                    <span className="text-xs font-bold px-2 py-1 bg-gray-100 rounded-lg text-gray-600 uppercase tracking-wider">
+                    <span className="text-sm font-bold px-2 py-1 bg-gray-100 rounded-lg text-gray-600 uppercase tracking-wider">
                       {r.code}
                     </span>
                   </td>
                   <td className="px-5 py-4 font-lato">
                     <span
-                      className={`px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase tracking-wider ${r.level === "federal" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}
+                      className={`px-2.5 py-1 text-sm font-bold rounded-lg uppercase tracking-wider ${r.level === "federal" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}
                     >
                       {r.level}
                     </span>
@@ -252,7 +252,7 @@ export default function RegulatorsPage() {
                           className="w-8 h-8 flex items-center justify-center rounded-lg text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
                           title="Edit"
                         >
-                          <FontAwesomeIcon icon={faEdit} className="text-xs" />
+                          <FontAwesomeIcon icon={faEdit} className="text-sm" />
                         </button>
                         <button
                           onClick={() => setDeleteTarget(r)}
@@ -260,7 +260,7 @@ export default function RegulatorsPage() {
                           disabled={deleteMutation.isPending}
                           title="Delete"
                         >
-                          <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                          <FontAwesomeIcon icon={faTrash} className="text-sm" />
                         </button>
                       </div>
                     </td>

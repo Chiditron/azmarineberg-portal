@@ -104,7 +104,7 @@ function NotificationBell({ tone = "default" }: { tone?: BellTone }) {
         onClick={() => setOpen((o) => !o)}
         className="relative p-2.5 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-primary transition-all active:scale-95"
       >
-        <FontAwesomeIcon icon={faBell} className="w-5 h-5" />
+        <FontAwesomeIcon icon={faBell} className="w-8 h-8" />
         {unreadCount > 0 && (
           <span className="absolute top-1.5 right-1.5 flex h-4.5 min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
             {unreadCount > 99 ? "99+" : unreadCount}
@@ -112,9 +112,9 @@ function NotificationBell({ tone = "default" }: { tone?: BellTone }) {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-85 max-h-[400px] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
-            <span className="text-sm font-bold text-gray-900 font-outfit">
+        <div className="absolute right-0 top-full mt-2 max-h-[400px] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50 w-80">
+            <span className="font-semibold text-gray-900 font-outfit">
               Notifications
             </span>
             {unreadCount > 0 && (
@@ -174,10 +174,9 @@ const NavItem = ({
     to={to}
     end={end}
     className={({ isActive }) =>
-      `flex items-center gap-3.5 px-4 py-3.5 mx-3 rounded-xl text-sm font-medium transition-all group duration-200 ${
-        isActive
-          ? "bg-white text-primary shadow-sm ring-1 ring-gray-200"
-          : "text-gray-600 hover:bg-gray-100/80 hover:text-primary"
+      `flex items-center gap-3.5 px-4 py-3.5 mx-3 rounded-xl font-medium transition-all group duration-200 ${isActive
+        ? "bg-white text-primary shadow-sm ring-1 ring-gray-200"
+        : "text-gray-600 hover:bg-gray-100/80 hover:text-primary"
       }`
     }
   >
@@ -216,20 +215,19 @@ export default function SidebarLayout() {
   const displayName = isClient
     ? user?.companyName || user?.email || ""
     : [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
-      user?.email ||
-      "";
+    user?.email ||
+    "";
 
   const sidebarWidth = collapsed
     ? SIDEBAR_WIDTH_COLLAPSED
     : SIDEBAR_WIDTH_EXPANDED;
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${
-      isActive ? "bg-white/25" : "hover:bg-white/15"
+    `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-white/25" : "hover:bg-white/15"
     }`;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex font-inter">
+    <div className="min-h-screen bg-gray-100 flex font-inter">
       {/* Sidebar */}
       <aside
         className="fixed left-0 top-0 bottom-0 z-40 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
@@ -238,16 +236,22 @@ export default function SidebarLayout() {
         <div className="flex items-center justify-between h-20 px-6 shrink-0 bg-white">
           {!collapsed ? (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
+              {/* <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
                 <span className="text-white font-bold text-lg">A</span>
+              </div> */}
+              <div>
+                <img src="/public/logo.png" alt="az logo" className="w-8 h-8 object-cover" />
               </div>
               <span className="font-bold text-gray-900 text-lg tracking-tight font-outfit">
                 Azmarineberg
               </span>
             </div>
           ) : (
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto shadow-lg shadow-primary/20">
-              <span className="text-white font-bold text-lg">A</span>
+            // <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto shadow-lg shadow-primary/20">
+            //   <span className="text-white font-bold text-lg">A</span>
+            // </div>
+            <div>
+              <img src="/public/logo.png" alt="az logo" className="w-8 h-8 object-cover" />
             </div>
           )}
         </div>
@@ -382,7 +386,7 @@ export default function SidebarLayout() {
 
       {/* Main content */}
       <main
-        className="flex-1 min-h-screen flex flex-col transition-all duration-300 ease-in-out relative overflow-y-scroll"
+        className="flex-1 min-h-screen flex flex-col transition-all duration-300 ease-in-out relative overflow-y-scroll pt-5"
         style={{ paddingLeft: sidebarWidth }}
       >
         {/* Toggle Button for Sidebar - Floating style */}
@@ -413,14 +417,14 @@ export default function SidebarLayout() {
             <div className="h-8 w-[1px] bg-gray-200 mx-1"></div>
             <div className="flex items-center gap-3 pl-1">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-gray-900 truncate max-w-[150px]">
+                <p className="font-semibold text-gray-900 truncate max-w-[150px]">
                   {displayName}
                 </p>
-                <p className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                <p className="text-xs font-semibold text-primary uppercase tracking-wider">
                   {user?.role?.replace("_", " ")}
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold shadow-sm ring-1 ring-primary/20">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold shadow-sm ring-1 ring-primary/20 text-xl">
                 {displayName.charAt(0).toUpperCase()}
               </div>
             </div>

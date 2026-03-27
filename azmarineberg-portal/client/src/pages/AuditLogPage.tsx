@@ -99,24 +99,26 @@ export default function AuditLogPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Audit Log"
-        description="Track all system actions and user activity"
-      />
+      <div className="flex items-center justify-between">
+        <PageHeader
+          title="Audit Log"
+          description="Track all system actions and user activity"
+        />
 
-      {/* Action bar */}
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={openFilterModal}
-          className="h-12 px-5 flex items-center gap-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:border-primary hover:text-primary transition-all font-poppins"
-        >
-          <FontAwesomeIcon icon={faFilter} className="text-xs" />
-          Filter
-          {hasActiveFilters && (
-            <span className="w-2 h-2 rounded-full bg-primary inline-block" />
-          )}
-        </button>
+        {/* Action bar */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={openFilterModal}
+            className="h-12 px-5 flex items-center gap-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:border-primary hover:text-primary transition-all font-poppins"
+          >
+            <FontAwesomeIcon icon={faFilter} className="text-xs" />
+            Filter
+            {hasActiveFilters && (
+              <span className="w-2 h-2 rounded-full bg-primary inline-block" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Filter Modal */}
@@ -212,11 +214,11 @@ export default function AuditLogPage() {
           setPage(0);
         }}
       >
-        {logs.map((l) => (
+        {logs.map((l, index) => (
           <Fragment key={l.id}>
             <tr className="hover:bg-blue-50/30 transition-colors border-b border-gray-50 last:border-0 font-lato">
               <td className="px-5 py-4 text-sm font-semibold text-gray-400 text-center">
-                —
+                {index + 1}
               </td>
               <td className="px-5 py-4 text-sm text-gray-600">
                 {new Date(l.created_at).toLocaleString()}

@@ -12,6 +12,7 @@ import { TextLabelInput, SingleSelectInput, MyCheckbox } from "./ui/FormFields";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import Modal from "./ui/Modal";
+import { useState } from "react";
 
 interface CreateClientModalProps {
   open: boolean;
@@ -43,6 +44,7 @@ export default function CreateClientModal({
   onClose,
   onSuccess,
 }: CreateClientModalProps) {
+  const [createUserAndInvite, setCreateUserAndInvite] = useState(false);
   const { data: industrySectors } = useQuery({
     queryKey: ["industry-sectors"],
     queryFn: () =>
@@ -83,6 +85,10 @@ export default function CreateClientModal({
         }}
         validationSchema={CreateClientSchema}
         onSubmit={async (values, { setSubmitting, setStatus }) => {
+          if (!createUserAndInvite) {
+            return toast.error("Please check the box to continue")
+          }
+
           try {
             const payload = {
               ...values,
@@ -284,15 +290,11 @@ export default function CreateClientModal({
               </FieldArray>
             </div>
 
-            <div className="py-2">
-              <MyCheckbox name="createUserAndInvite">
-                <span className="font-semibold text-gray-700">
-                  Automated Onboarding
-                </span>
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  Create user account and generate an invite link automatically
-                </p>
-              </MyCheckbox>
+            <div>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={createUserAndInvite} onChange={(e) => setCreateUserAndInvite(e.target.checked)} />
+                Create user account and generate invite link
+              </label>
             </div>
 
             <div className="pt-6 border-t border-gray-100">

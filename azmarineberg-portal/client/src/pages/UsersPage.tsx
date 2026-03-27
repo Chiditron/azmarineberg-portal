@@ -275,21 +275,21 @@ export default function UsersPage() {
                   <td className="px-5 py-4 text-sm font-semibold text-gray-400">
                     {index + 1}
                   </td>
-                  <td className="px-5 py-4 font-bold text-gray-900">
+                  <td className="px-5 py-4 text-gray-900">
                     {u.first_name} {u.last_name}
                   </td>
-                  <td className="px-5 py-4 text-sm text-gray-600 font-medium">
+                  <td className="px-5 py-4 text-gray-600 font-medium">
                     {u.email}
                   </td>
-                  <td className="px-5 py-4 text-sm text-gray-600">
+                  <td className="px-5 py-4 text-gray-600">
                     {u.phone ?? "-"}
                   </td>
                   <td className="px-5 py-4">
-                    <span className="capitalize px-2.5 py-1 bg-gray-100 rounded-lg text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                    <span className="capitalize px-2.5 py-1 bg-gray-100 rounded-lg text-sm font-bold text-gray-600 uppercase tracking-wider">
                       {u.role?.replace("_", " ")}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-sm text-gray-500 font-medium">
+                  <td className="px-5 py-4 text-gray-500 font-medium">
                     {new Date(u.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-5 py-4 text-sm">

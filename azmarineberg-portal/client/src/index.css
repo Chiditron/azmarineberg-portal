@@ -44,21 +44,26 @@ body {
 }*/
 
 @layer components {
+
   /* Reference table design: header #f8f9fa, row borders only, consistent padding */
   .table-thead {
     @apply bg-gray-100;
   }
+
   .table-th {
-    @apply px-5 py-3 text-left text-sm font-semibold text-gray-800;
+    @apply px-5 py-3 text-left font-semibold text-gray-800;
   }
+
   .table-tbody tr {
     @apply border-b border-gray-200;
   }
+
   .table-tbody tr:hover {
     @apply bg-gray-50/50;
   }
+
   .table-td {
-    @apply px-5 py-4 text-sm text-gray-800;
+    @apply px-5 py-4 text-gray-800;
   }
 
   /* TableWrapper: min column width + optional sticky header inside scroll region */

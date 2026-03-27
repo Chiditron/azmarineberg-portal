@@ -118,10 +118,10 @@ export default function AdminClients() {
                   </td>
                   <td className="px-5 py-4 font-lato">
                     <div className="flex flex-col">
-                      <span className="font-bold text-gray-900">
+                      <span className="text-gray-900">
                         {c.company_name}
                       </span>
-                      <span className="text-xs text-gray-500">{c.email}</span>
+                      <span className="text-sm text-gray-500">{c.email}</span>
                     </div>
                   </td>
                   <td className="px-5 py-4 text-sm text-gray-600 font-medium font-lato">
@@ -131,7 +131,7 @@ export default function AdminClients() {
                     {c.state} / {c.zone}
                   </td>
                   <td className="px-5 py-4 text-sm text-gray-600 font-lato">
-                    <span className="px-2.5 py-1 bg-gray-100 rounded-lg text-xs font-bold text-gray-600">
+                    <span className="px-2.5 py-1 bg-gray-100 rounded-lg font-semibold text-gray-600">
                       {c.industry_sector}
                     </span>
                   </td>

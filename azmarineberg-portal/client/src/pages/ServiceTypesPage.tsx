@@ -134,15 +134,6 @@ export default function ServiceTypesPage() {
       />
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="flex-grow">
-          <SearchSection
-            searchValue={search}
-            onSearchChange={setSearch}
-            actionLabel="Add Service Type"
-            onActionClick={openCreate}
-            placeholder="Search service types..."
-          />
-        </div>
         <div className="md:w-48 h-12 relative">
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
             <FontAwesomeIcon icon={faFilter} className="text-sm" />
@@ -159,6 +150,15 @@ export default function ServiceTypesPage() {
               </option>
             ))}
           </select>
+        </div>
+        <div className="flex-grow">
+          <SearchSection
+            searchValue={search}
+            onSearchChange={setSearch}
+            actionLabel="Add Service Type"
+            onActionClick={openCreate}
+            placeholder="Search service types..."
+          />
         </div>
       </div>
 
@@ -279,15 +279,15 @@ export default function ServiceTypesPage() {
                     {index + 1}
                   </td>
                   <td className="px-5 py-4">
-                    <span className="font-bold text-gray-900">{st.name}</span>
+                    <span className="text-gray-900">{st.name}</span>
                   </td>
                   <td className="px-5 py-4">
-                    <span className="text-xs font-bold px-2 py-1 bg-gray-100 rounded-lg text-gray-600 uppercase tracking-wider">
+                    <span className="text-sm font-bold px-2 py-1 bg-gray-100 rounded-lg text-gray-600 uppercase tracking-wider">
                       {st.code}
                     </span>
                   </td>
                   <td className="px-5 py-4">
-                    <span className="text-sm text-gray-600 font-medium">
+                    <span className="text-gray-600 font-medium">
                       {st.regulator_name ?? "-"}
                     </span>
                   </td>
@@ -299,7 +299,7 @@ export default function ServiceTypesPage() {
                           className="w-8 h-8 flex items-center justify-center rounded-lg text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
                           title="Edit"
                         >
-                          <FontAwesomeIcon icon={faEdit} className="text-xs" />
+                          <FontAwesomeIcon icon={faEdit} className="text-sm" />
                         </button>
                         <button
                           onClick={() => setDeleteTarget(st)}
@@ -307,7 +307,7 @@ export default function ServiceTypesPage() {
                           disabled={deleteMutation.isPending}
                           title="Delete"
                         >
-                          <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                          <FontAwesomeIcon icon={faTrash} className="text-sm" />
                         </button>
                       </div>
                     </td>

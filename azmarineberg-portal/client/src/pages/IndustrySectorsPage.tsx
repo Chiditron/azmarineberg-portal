@@ -202,10 +202,10 @@ export default function IndustrySectorsPage() {
               {index + 1}
             </td>
             <td className="px-5 py-4">
-              <span className="font-bold text-gray-700">{s.name}</span>
+              <span className="text-gray-700">{s.name}</span>
             </td>
             <td className="px-5 py-4">
-              <span className="text-xs font-bold px-2 py-1 bg-gray-100 rounded-lg text-gray-600 uppercase tracking-wider">
+              <span className="text-sm font-bold px-2 py-1 bg-gray-100 rounded-lg text-gray-600 uppercase tracking-wider">
                 {s.code}
               </span>
             </td>
@@ -217,7 +217,7 @@ export default function IndustrySectorsPage() {
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
                     title="Edit"
                   >
-                    <FontAwesomeIcon icon={faEdit} className="text-xs" />
+                    <FontAwesomeIcon icon={faEdit} className="text-sm" />
                   </button>
                   <button
                     onClick={() => setDeleteTarget(s)}
@@ -225,7 +225,7 @@ export default function IndustrySectorsPage() {
                     disabled={deleteMutation.isPending}
                     title="Delete"
                   >
-                    <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                    <FontAwesomeIcon icon={faTrash} className="text-sm" />
                   </button>
                 </div>
               </td>

@@ -11,6 +11,7 @@ import {
   faFileExport,
   faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
+import { useNavigate } from "react-router-dom";
 
 interface ReportRow {
   serviceId: string;
@@ -106,6 +107,7 @@ const statusBadgeClass: Record<string, string> = {
 
 export default function ReportPage() {
   // Applied filter state (drives the query)
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [facilityId, setFacilityId] = useState("");
@@ -190,11 +192,11 @@ export default function ReportPage() {
   const allRows = data?.rows ?? [];
   const rows = search
     ? allRows.filter((r) =>
-        [r.facility, r.address, r.sector, r.service, r.regulator, r.status]
-          .join(" ")
-          .toLowerCase()
-          .includes(search.toLowerCase()),
-      )
+      [r.facility, r.address, r.sector, r.service, r.regulator, r.status]
+        .join(" ")
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    )
     : allRows;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -288,8 +290,8 @@ export default function ReportPage() {
             serviceTypeId ||
             regulatorId ||
             status) && (
-            <span className="w-2 h-2 rounded-full bg-primary inline-block" />
-          )}
+              <span className="w-2 h-2 rounded-full bg-primary inline-block" />
+            )}
         </button>
 
         {/* Export dropdown */}
@@ -460,25 +462,25 @@ export default function ReportPage() {
         {rows.map((row, i) => (
           <tr
             key={i}
+            onClick={() => navigate(`/services/${row.serviceId}`)}
             className="hover:bg-blue-50/30 transition-colors border-b border-gray-50 last:border-0 font-lato"
           >
             <td className="px-5 py-4 text-sm font-semibold text-gray-400 text-center">
               {page * pageSize + i + 1}
             </td>
             <td className="px-5 py-4">
-              <span className="font-semibold text-gray-900 text-sm">
+              <span className="text-gray-900">
                 {row.facility}
               </span>
             </td>
-            <td className="px-5 py-4 text-sm text-gray-600">{row.address}</td>
-            <td className="px-5 py-4 text-sm text-gray-600">{row.sector}</td>
-            <td className="px-5 py-4 text-sm text-gray-600">{row.service}</td>
-            <td className="px-5 py-4 text-sm text-gray-600">{row.regulator}</td>
+            <td className="px-5 py-4 text-gray-600">{row.address}</td>
+            <td className="px-5 py-4 text-gray-600">{row.sector}</td>
+            <td className="px-5 py-4 text-gray-600">{row.service}</td>
+            <td className="px-5 py-4 text-gray-600">{row.regulator}</td>
             <td className="px-5 py-4">
               <span
-                className={`px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase tracking-wider ${
-                  statusBadgeClass[row.status] ?? "bg-gray-100 text-gray-600"
-                }`}
+                className={`px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase whitespace-nowrap tracking-wider ${statusBadgeClass[row.status] ?? "bg-gray-100 text-gray-600"
+                  }`}
               >
                 {row.status.replace(/_/g, " ")}
               </span>

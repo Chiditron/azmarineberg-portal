@@ -67,17 +67,17 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <h2 className="text-2xl font-semibold text-gray-900 font-poppins">
           Welcome {user?.firstName ?? ""}
         </h2>
-        <p className="text-sm text-gray-500 mt-1 font-medium font-lato">
+        <p className="text-gray-500 mt-1 font-medium font-lato">
           Overview of company registrations and regulatory service performance
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <DashboardCard
           title="Total Companies"
           value={data?.totalCompanies ?? 0}
@@ -102,7 +102,7 @@ export default function SuperAdminDashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-white p-8 rounded-2xl border border-gray-50">
           <h3 className="text-lg font-semibold text-gray-900 mb-8 font-poppins">
             Services by Regulator

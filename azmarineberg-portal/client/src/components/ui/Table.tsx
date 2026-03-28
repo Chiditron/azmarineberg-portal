@@ -35,7 +35,7 @@ export default function Table({
   children,
   data,
   changePage,
-  mobileColumns,
+  // mobileColumns,
   isLoading,
   loadingMessage = "Loading data...",
   emptyMessage = "No data found",
@@ -240,7 +240,7 @@ export default function Table({
       </div>
 
       {/* Mobile Table */}
-      {mobileColumns && (
+      {columns && (
         <div className="md:hidden bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mt-4">
           <div className="overflow-x-auto hide_scrollbar">
             <table className="w-full text-left border-separate border-spacing-0">
@@ -249,7 +249,7 @@ export default function Table({
                   <th className="pl-4 w-10 text-[10px] font-bold text-gray-400 uppercase font-poppins">
                     #
                   </th>
-                  {mobileColumns.map((column, index) => (
+                  {columns.map((column, index) => (
                     <th
                       className="px-3 text-[10px] font-bold text-gray-400 uppercase font-poppins"
                       key={index}

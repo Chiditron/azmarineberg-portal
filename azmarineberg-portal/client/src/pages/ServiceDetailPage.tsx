@@ -152,7 +152,7 @@ export default function ServiceDetailPage() {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:justify-between md:items-start md:gap-6">
           <div className="min-w-0 flex-1">
-            <div className='flex items-center justify-between gap-10'>
+            <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-10'>
               <div>
                 <h2 className="text-xl font-semibold">{service.service_type?.name ?? service.service_code}</h2>
                 <p className="mt-1 text-gray-600">{service.service_description}</p>

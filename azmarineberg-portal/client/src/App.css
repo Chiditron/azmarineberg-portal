@@ -8,12 +8,15 @@
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
+
 .hide_scrollbar::-webkit-scrollbar {
   display: none !important;
 }
+
 .hide_scrollbar::-webkit-scrollbar-track {
   display: none !important;
 }
+
 .overflow-scroll::-webkit-scrollbar,
 .overflow-y-scroll::-webkit-scrollbar,
 .overflow-x-scroll::-webkit-scrollbar {
@@ -29,7 +32,8 @@
 
 .wrap {
   width: 100%;
-  padding: 0 5%;
+  padding-left: 5%;
+  padding-right: 5%;
 }
 
 /* Fix FontAwesome icon sizing to prevent large icons on page load */
@@ -50,7 +54,7 @@ svg[data-icon] {
 
 /* Ensure FontAwesome icons respect text size classes */
 .text-2xl svg[data-icon],
-.text-2xl > svg[data-icon] {
+.text-2xl>svg[data-icon] {
   width: 1.5rem !important;
   height: 1.5rem !important;
   max-width: 1.5rem !important;
@@ -58,7 +62,7 @@ svg[data-icon] {
 }
 
 .text-lg svg[data-icon],
-.text-lg > svg[data-icon] {
+.text-lg>svg[data-icon] {
   width: 1.125rem !important;
   height: 1.125rem !important;
   max-width: 1.125rem !important;
@@ -66,7 +70,7 @@ svg[data-icon] {
 }
 
 .text-xl svg[data-icon],
-.text-xl > svg[data-icon] {
+.text-xl>svg[data-icon] {
   width: 1.25rem !important;
   height: 1.25rem !important;
   max-width: 1.25rem !important;
@@ -74,7 +78,7 @@ svg[data-icon] {
 }
 
 .text-sm svg[data-icon],
-.text-sm > svg[data-icon] {
+.text-sm>svg[data-icon] {
   width: 0.875rem !important;
   height: 0.875rem !important;
   max-width: 0.875rem !important;
@@ -82,7 +86,7 @@ svg[data-icon] {
 }
 
 .text-xs svg[data-icon],
-.text-xs > svg[data-icon] {
+.text-xs>svg[data-icon] {
   width: 0.75rem !important;
   height: 0.75rem !important;
   max-width: 0.75rem !important;
@@ -90,14 +94,14 @@ svg[data-icon] {
 }
 
 .text-4xl svg[data-icon],
-.text-4xl > svg[data-icon] {
+.text-4xl>svg[data-icon] {
   width: 2.25rem !important;
   height: 2.25rem !important;
   max-width: 2.25rem !important;
   max-height: 2.25rem !important;
 }
-*/
 
+*/
 /* #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -111,9 +115,11 @@ svg[data-icon] {
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -122,6 +128,7 @@ svg[data-icon] {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }

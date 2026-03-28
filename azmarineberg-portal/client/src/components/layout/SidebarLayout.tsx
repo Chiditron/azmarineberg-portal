@@ -101,17 +101,17 @@ function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative p-2.5 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-primary transition-all active:scale-95"
+        className="relative p- rounded-xl text-gray-500 hover:bg-gray-100 hover:text-primary transition-all active:scale-95"
       >
         <FontAwesomeIcon icon={faBell} className="w-8 h-8" />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 flex h-4.5 min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+          <span className="absolute -top-1.5 -right-2 flex h-4.5 min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 max-h-[400px] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="fixed md:absolute right-5 md:right-0 top-20 md:top-full mt-2 max-h-[400px] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50 w-80">
             <span className="font-semibold text-gray-900 font-outfit">
               Notifications
@@ -372,7 +372,7 @@ export default function SidebarLayout() {
 
                 <div className="flex h-20 items-center justify-between px-6 shrink-0 bg-white border-b border-gray-100">
                   <div className="flex items-center gap-2">
-                    <img src="/public/logo.png" alt="az logo" className="w-8 h-8 object-cover" />
+                    <img src="/logo.png" alt="az logo" className="w-8 h-8 object-cover" />
                     <span className="font-bold text-gray-900 text-lg tracking-tight font-outfit">
                       Azmarineberg
                     </span>
@@ -415,22 +415,16 @@ export default function SidebarLayout() {
         <div className="flex items-center justify-between h-20 px-6 shrink-0 bg-white">
           {!collapsed ? (
             <div className="flex items-center gap-2">
-              {/* <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-                <span className="text-white font-bold text-lg">A</span>
-              </div> */}
               <div>
-                <img src="/public/logo.png" alt="az logo" className="w-8 h-8 object-cover" />
+                <img src="/logo.png" alt="az logo" className="w-8 h-8 object-cover" />
               </div>
               <span className="font-bold text-gray-900 text-lg tracking-tight font-outfit">
                 Azmarineberg
               </span>
             </div>
           ) : (
-            // <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto shadow-lg shadow-primary/20">
-            //   <span className="text-white font-bold text-lg">A</span>
-            // </div>
             <div>
-              <img src="/public/logo.png" alt="az logo" className="w-8 h-8 object-cover" />
+              <img src="/logo.png" alt="az logo" className="w-8 h-8 object-cover" />
             </div>
           )}
         </div>
@@ -480,26 +474,26 @@ export default function SidebarLayout() {
         </button>
 
         {/* Header */}
-        <header className={`fixed w-full left-0 top-0 z-30 flex items-center justify-between py-5 px-6 lg:px-12 bg-white border-b border-gray-200 ${collapsed ? "xl:pl-28" : "xl:pl-72"}`}>
+        <header className={`fixed w-full left-0 top-0 z-30 flex items-center justify-between py-5 wrap bg-white border-b border-gray-200 ${collapsed ? "xl:pl-28" : "xl:pl-72"}`}>
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="xl:hidden p-2 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-primary transition-all active:scale-95"
+              className="xl:hidden rounded-xl text-gray-500 hover:bg-gray-100 hover:text-primary transition-all active:scale-95"
             >
               <FontAwesomeIcon icon={faBars} className="w-5 h-5" />
             </button>
-            <h2 className="text-xl font-semibold text-gray-900 capitalize hidden sm:block">
+            {/* <h2 className="text-xl font-semibold text-gray-900 capitalize hidden sm:block">
               {location.pathname
                 .split("/")
                 .filter(Boolean)
                 .pop()
                 ?.replace(/-/g, " ") || "Dashboard"}
-            </h2>
+            </h2> */}
             <div className="sm:hidden xl:hidden">
-              <img src="/public/logo.png" alt="az logo" className="w-8 h-8 object-cover" />
+              <img src="/logo.png" alt="az logo" className="w-10 h-10 object-cover" />
             </div>
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2">
             <NotificationBell />
             <div className="h-8 w-[1px] bg-gray-200 mx-1"></div>
             <div className="flex items-center gap-3 pl-1">
@@ -519,8 +513,8 @@ export default function SidebarLayout() {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 pt-24 pb-16">
-          <div className="px-7">
+        <div className="flex-1 pt-20 md:pt-24 pb-16">
+          <div className="wrap">
             <Outlet />
           </div>
         </div>

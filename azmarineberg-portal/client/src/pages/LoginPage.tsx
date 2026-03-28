@@ -25,8 +25,8 @@ export default function LoginPage() {
   return (
     <AuthLayout>
       <div className="text-center mb-5">
-        <h1 className="text-2xl font-semibold text-primary">Welcome back</h1>
-        <p className="text-gray-500 mt-2">Login to access your account</p>
+        <h1 className="text-xl md:text-2xl font-semibold text-primary">Welcome back</h1>
+        <p className="text-gray-500 mt-1">Login to access your account</p>
       </div>
 
       <Formik

@@ -40,10 +40,10 @@ export default function ClientProfilePage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-900">Profile</h2>
+      <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Profile</h2>
 
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-semibold mb-4">{company.company_name}</h3>
+        <h3 className="text-lg md:text-xl font-medium mb-4">{company.company_name}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-3 items-start">
           <p className="text-gray-600"><span className="font-semibold text-gray-800">Email:</span> {company.email}</p>
           {company.phone && <p className="text-gray-600"><span className="font-semibold text-gray-800">Phone:</span> {company.phone}</p>}
@@ -56,7 +56,7 @@ export default function ClientProfilePage() {
         </div>
         {company.facilities?.length > 0 && (
           <div className="mt-8 pt-5 border-t">
-            <h4 className="text-xl font-semibold text-gray-800 mb-2">Facilities ({company.facilities.length})</h4>
+            <h4 className="text-lg md:text-xl font-medium text-gray-800 mb-2">Facilities ({company.facilities.length})</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {company.facilities.map((f) => (
                 <div key={f.id} className="bg-gray-50 rounded-lg p-3">

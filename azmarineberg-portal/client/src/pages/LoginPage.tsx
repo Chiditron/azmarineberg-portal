@@ -72,6 +72,15 @@ export default function LoginPage() {
               placeholder="Enter your password"
             />
 
+            <div className="flex justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-primary hover:underline font-medium"
+              >
+                Forgot Password?
+              </Link>
+            </div>
+
             <button
               type="submit"
               disabled={isSubmitting}

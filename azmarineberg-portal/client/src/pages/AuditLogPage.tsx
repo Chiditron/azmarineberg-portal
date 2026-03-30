@@ -93,6 +93,19 @@ export default function AuditLogPage() {
     setShowFilter(false);
   };
 
+  const clearFilters = () => {
+    setDraftEntityType('');
+    setDraftAction('');
+    setDraftFrom('');
+    setDraftTo('');
+    setEntityType('');
+    setAction('');
+    setFrom('');
+    setTo('');
+    setPage(0);
+    setShowFilter(false);
+  };
+
   const hasActiveFilters = entityType || action || from || to;
 
   const columns = ["Time", "Action", "Entity", "Actor", "Details"];
@@ -186,14 +199,21 @@ export default function AuditLogPage() {
             </div>
           </div>
 
-          {/* Apply button */}
-          <div className="pt-6 border-t border-gray-100">
+          {/* Apply / Clear buttons */}
+          <div className="pt-6 border-t border-gray-100 flex gap-3">
             <button
               type="button"
               onClick={applyFilters}
-              className="w-full py-4 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] font-poppins"
+              className="flex-1 py-4 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] font-poppins"
             >
               Apply Filters
+            </button>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all active:scale-[0.98] font-poppins"
+            >
+              Clear Filters
             </button>
           </div>
         </div>
@@ -258,10 +278,23 @@ export default function AuditLogPage() {
             </tr>
             {expandedId === l.id && l.changes && (
               <tr>
-                <td colSpan={6} className="px-6 py-4 bg-gray-50/80">
-                  <pre className="text-xs overflow-x-auto text-gray-700 font-mono">
-                    {JSON.stringify(l.changes, null, 2)}
-                  </pre>
+                <td colSpan={6} className="px-6 py-5 bg-gray-50/80">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {Object.entries(l.changes).map(([key, value]) => (
+                      <div key={key} className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+                          {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                        </p>
+                        <p className="text-sm font-medium text-gray-800 break-all">
+                          {value === null || value === undefined
+                            ? '—'
+                            : typeof value === 'object'
+                            ? JSON.stringify(value)
+                            : String(value)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </td>
               </tr>
             )}

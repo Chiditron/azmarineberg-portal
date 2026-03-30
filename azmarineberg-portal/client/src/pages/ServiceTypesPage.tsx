@@ -140,7 +140,10 @@ export default function ServiceTypesPage() {
           </div>
           <select
             value={filterRegulator}
-            onChange={(e) => setFilterRegulator(e.target.value)}
+            onChange={(e) => {
+              setFilterRegulator(e.target.value);
+              setSearch('');
+            }}
             className="w-full h-full pl-11 pr-8 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-semibold text-gray-700 appearance-none"
           >
             <option value="">All Regulators</option>

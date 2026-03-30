@@ -106,15 +106,8 @@ export default function CreateClientModal({
             }>("/admin/clients", payload);
             if (res.inviteLink) {
               navigator.clipboard.writeText(res.inviteLink);
-              toast.success(
-                "Client created. Invite link copied to clipboard.",
-                {
-                  duration: 5000,
-                },
-              );
-            } else {
-              toast.success("Client created successfully.");
             }
+            toast.success("Client has been created successfully.", { duration: 5000 });
             onSuccess();
             onClose();
           } catch (err) {

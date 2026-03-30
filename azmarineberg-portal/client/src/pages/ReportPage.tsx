@@ -220,6 +220,21 @@ export default function ReportPage() {
     setShowFilter(false);
   };
 
+  const clearFilters = () => {
+    setDraftFacilityId('');
+    setDraftSectorId('');
+    setDraftServiceTypeId('');
+    setDraftRegulatorId('');
+    setDraftStatus('');
+    setFacilityId('');
+    setSectorId('');
+    setServiceTypeId('');
+    setRegulatorId('');
+    setStatus('');
+    setPage(0);
+    setShowFilter(false);
+  };
+
   const handleExport = useCallback(
     async (format: "csv" | "excel" | "pdf") => {
       setShowExport(false);
@@ -431,14 +446,21 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* Apply button */}
-          <div className="pt-6 border-t border-gray-100">
+          {/* Apply / Clear buttons */}
+          <div className="pt-6 border-t border-gray-100 flex gap-3">
             <button
               type="button"
               onClick={applyFilters}
-              className="w-full py-4 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] font-poppins"
+              className="flex-1 py-4 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] font-poppins"
             >
               Apply Filters
+            </button>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all active:scale-[0.98] font-poppins"
+            >
+              Clear Filters
             </button>
           </div>
         </div>

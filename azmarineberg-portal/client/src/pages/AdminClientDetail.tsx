@@ -37,7 +37,7 @@ interface ClientDetail {
     regulator_name: string;
     service_type_name: string;
     facility_name: string;
-    validity_end: string;
+    validity_end: string | null;
     status: string;
   }[];
 }
@@ -316,7 +316,9 @@ export default function AdminClientDetail() {
                         {s.facility_name ?? "-"}
                       </td>
                       <td className="px-5 py-4 font-semibold text-gray-700">
-                        {new Date(s.validity_end).toLocaleDateString()}
+                        {s.validity_end
+                          ? new Date(s.validity_end).toLocaleDateString()
+                          : "Pending approval"}
                       </td>
                       <td className="px-5 py-4">
                         <span

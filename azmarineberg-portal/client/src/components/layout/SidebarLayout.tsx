@@ -16,6 +16,7 @@ import {
   faBuilding,
   faFileAlt,
   faHistory,
+  faListCheck,
   faSignOutAlt,
   faChevronLeft,
   faBell,
@@ -290,7 +291,13 @@ export default function SidebarLayout() {
                 <NavItem
                   to="/admin/service-types"
                   icon={faBriefcase}
-                  label="Services"
+                  label="Service Type"
+                  collapsed={isCollapsed}
+                />
+                <NavItem
+                  to="/admin/service-statuses"
+                  icon={faListCheck}
+                  label="Service Statuses"
                   collapsed={isCollapsed}
                 />
               </>

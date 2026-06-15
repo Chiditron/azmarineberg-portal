@@ -17,6 +17,12 @@ import Modal from "../components/ui/Modal";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { TextLabelInput, SingleSelectInput } from "../components/ui/FormFields";
+import {
+  formatValidityDisplay,
+  VALIDITY_UNIT_OPTIONS,
+  normalizeServiceTypeRow,
+  type ValidityUnitValue,
+} from "../utils/formatValidityPeriod";
 
 interface Regulator {
   id: string;
@@ -31,13 +37,32 @@ interface ServiceType {
   code: string;
   regulator_id: string;
   regulator_name?: string;
+  validity_count: number | null;
+  validity_unit: ValidityUnitValue | null;
 }
 
 const ServiceTypeSchema = Yup.object().shape({
   name: Yup.string().required("Required"),
   code: Yup.string().required("Required"),
   regulator_id: Yup.string().required("Required"),
+  validity_count: Yup.number()
+    .typeError("Enter a valid number")
+    .integer("Use a whole number")
+    .min(1, "At least 1")
+    .max(999, "At most 999")
+    .required("Required"),
+  validity_unit: Yup.string()
+    .oneOf(["days", "weeks", "months", "years"], "Select a unit")
+    .required("Required"),
 });
+
+type ServiceTypePayload = {
+  name: string;
+  code: string;
+  regulator_id: string;
+  validity_count: number;
+  validity_unit: ValidityUnitValue;
+};
 
 export default function ServiceTypesPage() {
   const { user } = useAuth();
@@ -57,12 +82,14 @@ export default function ServiceTypesPage() {
 
   const { data: serviceTypes, isLoading } = useQuery({
     queryKey: ["service-types", filterRegulator],
-    queryFn: () =>
-      api.get<ServiceType[]>(
+    queryFn: async () => {
+      const rows = await api.get<Record<string, unknown>[]>(
         filterRegulator
           ? `/admin/service-types?regulatorId=${filterRegulator}`
           : "/admin/service-types",
-      ),
+      );
+      return rows.map(normalizeServiceTypeRow);
+    },
   });
 
   const filtered = serviceTypes?.filter(
@@ -73,10 +100,25 @@ export default function ServiceTypesPage() {
   );
 
   const createMutation = useMutation({
-    mutationFn: (body: { name: string; code: string; regulator_id: string }) =>
+    mutationFn: (body: ServiceTypePayload) =>
       api.post<ServiceType>("/admin/service-types", body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["service-types"] });
+    onSuccess: (created) => {
+      const n = normalizeServiceTypeRow(created as unknown as Record<string, unknown>);
+      queryClient.setQueriesData<ServiceType[]>(
+        { queryKey: ["service-types"] },
+        (old) => {
+          if (!old?.length) return [n];
+          if (old.some((x) => x.id === n.id)) {
+            return old.map((x) =>
+              x.id === n.id
+                ? { ...x, ...n, regulator_name: n.regulator_name ?? x.regulator_name }
+                : x,
+            );
+          }
+          return [...old, n];
+        },
+      );
+      // Do not invalidate here: refetch can overwrite with GET rows missing validity until API/DB are fully deployed.
       setShowModal(false);
     },
   });
@@ -87,10 +129,20 @@ export default function ServiceTypesPage() {
       body,
     }: {
       id: string;
-      body: { name: string; code: string; regulator_id: string };
+      body: ServiceTypePayload;
     }) => api.put<ServiceType>(`/admin/service-types/${id}`, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["service-types"] });
+    onSuccess: (updated) => {
+      const n = normalizeServiceTypeRow(updated as unknown as Record<string, unknown>);
+      queryClient.setQueriesData<ServiceType[]>(
+        { queryKey: ["service-types"] },
+        (old) =>
+          old?.map((st) =>
+            st.id === n.id
+              ? { ...st, ...n, regulator_name: n.regulator_name ?? st.regulator_name }
+              : st,
+          ) ?? old,
+      );
+      // Do not invalidate here: refetch can overwrite merged validity from PUT when GET omits those fields.
       setShowModal(false);
       setEditing(null);
     },
@@ -122,6 +174,7 @@ export default function ServiceTypesPage() {
   const columns = [
     "Name",
     "Code",
+    "Validity",
     "Regulator",
     ...(canEdit ? ["Actions"] : []),
   ];
@@ -173,22 +226,32 @@ export default function ServiceTypesPage() {
         width="max-w-3xl"
       >
         <Formik
+          key={editing?.id ?? "create"}
           initialValues={{
             name: editing?.name ?? "",
             code: editing?.code ?? "",
             regulator_id: editing?.regulator_id ?? "",
+            validity_count: editing?.validity_count ?? 1,
+            validity_unit: (editing?.validity_unit ?? "years") as ValidityUnitValue,
           }}
           validationSchema={ServiceTypeSchema}
           enableReinitialize
           onSubmit={async (values, { setSubmitting, setStatus }) => {
             try {
+              const body: ServiceTypePayload = {
+                name: values.name.trim(),
+                code: values.code.trim(),
+                regulator_id: values.regulator_id,
+                validity_count: Number(values.validity_count),
+                validity_unit: values.validity_unit as ValidityUnitValue,
+              };
               if (editing) {
                 await updateMutation.mutateAsync({
                   id: editing.id,
-                  body: values,
+                  body,
                 });
               } else {
-                await createMutation.mutateAsync(values);
+                await createMutation.mutateAsync(body);
               }
               closeModal();
             } catch (err) {
@@ -230,6 +293,22 @@ export default function ServiceTypesPage() {
                   name="code"
                   placeholder="e.g. AQM"
                 />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <TextLabelInput
+                    label="Validity duration *"
+                    name="validity_count"
+                    type="number"
+                    min={1}
+                    max={999}
+                    placeholder="e.g. 1"
+                  />
+                  <SingleSelectInput
+                    label="Validity unit *"
+                    name="validity_unit"
+                    options={[...VALIDITY_UNIT_OPTIONS]}
+                  />
+                </div>
               </div>
 
               <div className="pt-6 border-t border-gray-100">
@@ -287,6 +366,11 @@ export default function ServiceTypesPage() {
                   <td className="px-5 py-4">
                     <span className="text-sm font-bold px-2 py-1 bg-gray-100 rounded-lg text-gray-600 uppercase tracking-wider">
                       {st.code}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className="text-gray-700 text-sm font-medium">
+                      {formatValidityDisplay(st.validity_count, st.validity_unit)}
                     </span>
                   </td>
                   <td className="px-5 py-4">

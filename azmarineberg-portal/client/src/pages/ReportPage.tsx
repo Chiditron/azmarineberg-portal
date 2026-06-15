@@ -12,6 +12,7 @@ import {
   faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
+import type { ServiceStatusDefinition } from "../types/serviceStatus";
 
 interface ReportRow {
   serviceId: string;
@@ -39,6 +40,8 @@ interface ServiceTypeOption {
   id: string;
   name: string;
   code: string;
+  validity_count?: number;
+  validity_unit?: string;
 }
 
 interface RegulatorOption {
@@ -48,15 +51,6 @@ interface RegulatorOption {
 }
 
 const DEFAULT_PAGE_SIZE = 20;
-const STATUS_OPTIONS = [
-  { value: "", label: "All Statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "site_visit", label: "Site Visit" },
-  { value: "report_preparation", label: "Report Preparation" },
-  { value: "submission", label: "Submission" },
-  { value: "approved", label: "Approved" },
-  { value: "closed", label: "Closed" },
-];
 
 function buildReportParams(
   page: number,
@@ -66,6 +60,8 @@ function buildReportParams(
   serviceTypeId: string,
   regulatorId: string,
   status: string,
+  completedOnly: string,
+  expiringSoon: string,
 ): URLSearchParams {
   const params = new URLSearchParams();
   params.set("limit", String(pageSize));
@@ -75,6 +71,8 @@ function buildReportParams(
   if (serviceTypeId) params.set("service_type_id", serviceTypeId);
   if (regulatorId) params.set("regulator_id", regulatorId);
   if (status) params.set("status", status);
+  if (completedOnly) params.set("completed", completedOnly);
+  if (expiringSoon) params.set("expiring_soon", expiringSoon);
   return params;
 }
 
@@ -85,6 +83,8 @@ function buildExportParams(
   serviceTypeId: string,
   regulatorId: string,
   status: string,
+  completedOnly: string,
+  expiringSoon: string,
 ): URLSearchParams {
   const params = new URLSearchParams();
   params.set("format", format);
@@ -93,16 +93,36 @@ function buildExportParams(
   if (serviceTypeId) params.set("service_type_id", serviceTypeId);
   if (regulatorId) params.set("regulator_id", regulatorId);
   if (status) params.set("status", status);
+  if (completedOnly) params.set("completed", completedOnly);
+  if (expiringSoon) params.set("expiring_soon", expiringSoon);
   return params;
 }
 
 const statusBadgeClass: Record<string, string> = {
   approved: "bg-green-100 text-green-700",
+  final_approval: "bg-green-100 text-green-700",
+  interim_approval: "bg-emerald-50 text-emerald-700",
   closed: "bg-gray-100 text-gray-600",
   draft: "bg-yellow-100 text-yellow-700",
+  postponed: "bg-slate-100 text-slate-700",
   submission: "bg-blue-100 text-blue-700",
   site_visit: "bg-purple-100 text-purple-700",
+  quality_checks: "bg-purple-50 text-purple-700",
+  field_exercise: "bg-indigo-50 text-indigo-700",
+  scoping: "bg-indigo-50 text-indigo-700",
+  site_verification: "bg-violet-50 text-violet-700",
+  inspection: "bg-fuchsia-50 text-fuchsia-700",
+  seasonal_data_gathering: "bg-cyan-50 text-cyan-700",
+  data_gathering: "bg-cyan-50 text-cyan-700",
+  analysis: "bg-sky-50 text-sky-700",
+  regulatory_review: "bg-teal-50 text-teal-700",
   report_preparation: "bg-orange-100 text-orange-700",
+  client_review: "bg-orange-50 text-orange-700",
+  payment_pending: "bg-amber-50 text-amber-800",
+  procurement_stage: "bg-amber-50 text-amber-800",
+  bill_preparation: "bg-amber-50 text-amber-800",
+  client_acknowledgement: "bg-lime-50 text-lime-800",
+  processing: "bg-gray-50 text-gray-700",
 };
 
 export default function ReportPage() {
@@ -115,6 +135,8 @@ export default function ReportPage() {
   const [serviceTypeId, setServiceTypeId] = useState("");
   const [regulatorId, setRegulatorId] = useState("");
   const [status, setStatus] = useState("");
+  const [completedOnly, setCompletedOnly] = useState("");
+  const [expiringSoon, setExpiringSoon] = useState("");
   const [search, setSearch] = useState("");
 
   // Draft filter state (pending until Apply is clicked)
@@ -123,6 +145,8 @@ export default function ReportPage() {
   const [draftServiceTypeId, setDraftServiceTypeId] = useState("");
   const [draftRegulatorId, setDraftRegulatorId] = useState("");
   const [draftStatus, setDraftStatus] = useState("");
+  const [draftCompletedOnly, setDraftCompletedOnly] = useState("");
+  const [draftExpiringSoon, setDraftExpiringSoon] = useState("");
 
   // UI state
   const [showFilter, setShowFilter] = useState(false);
@@ -149,6 +173,8 @@ export default function ReportPage() {
     serviceTypeId,
     regulatorId,
     status,
+    completedOnly,
+    expiringSoon,
   );
 
   const { data, isLoading } = useQuery({
@@ -161,6 +187,8 @@ export default function ReportPage() {
       serviceTypeId,
       regulatorId,
       status,
+      completedOnly,
+      expiringSoon,
     ],
     queryFn: () =>
       api.get<{ rows: ReportRow[]; total: number }>(
@@ -188,6 +216,23 @@ export default function ReportPage() {
     queryFn: () => api.get<RegulatorOption[]>("/admin/regulators"),
   });
 
+  const { data: serviceStatuses = [] } = useQuery({
+    queryKey: ["service-statuses", "all"],
+    queryFn: () =>
+      api.get<ServiceStatusDefinition[]>("/admin/service-statuses?includeInactive=true"),
+  });
+
+  const statusOptions: Array<{ value: string; label: string }> = [
+    { value: "", label: "All Statuses" },
+    ...serviceStatuses
+      .filter((s) => s.is_active)
+      .map((s) => ({ value: s.code, label: s.label })),
+  ];
+
+  const statusLabels = Object.fromEntries(
+    serviceStatuses.map((s) => [s.code, s.label]),
+  ) as Record<string, string>;
+
   const total = data?.total ?? 0;
   const allRows = data?.rows ?? [];
   const rows = search
@@ -207,6 +252,8 @@ export default function ReportPage() {
     setDraftServiceTypeId(serviceTypeId);
     setDraftRegulatorId(regulatorId);
     setDraftStatus(status);
+    setDraftCompletedOnly(completedOnly);
+    setDraftExpiringSoon(expiringSoon);
     setShowFilter(true);
   };
 
@@ -216,6 +263,8 @@ export default function ReportPage() {
     setServiceTypeId(draftServiceTypeId);
     setRegulatorId(draftRegulatorId);
     setStatus(draftStatus);
+    setCompletedOnly(draftCompletedOnly);
+    setExpiringSoon(draftExpiringSoon);
     setPage(0);
     setShowFilter(false);
   };
@@ -226,11 +275,15 @@ export default function ReportPage() {
     setDraftServiceTypeId('');
     setDraftRegulatorId('');
     setDraftStatus('');
+    setDraftCompletedOnly('');
+    setDraftExpiringSoon('');
     setFacilityId('');
     setSectorId('');
     setServiceTypeId('');
     setRegulatorId('');
     setStatus('');
+    setCompletedOnly('');
+    setExpiringSoon('');
     setPage(0);
     setShowFilter(false);
   };
@@ -246,6 +299,8 @@ export default function ReportPage() {
         serviceTypeId,
         regulatorId,
         status,
+        completedOnly,
+        expiringSoon,
       );
       const blob = await api.downloadBlob(
         `/admin/report/export?${q.toString()}`,
@@ -257,7 +312,7 @@ export default function ReportPage() {
       a.click();
       URL.revokeObjectURL(url);
     },
-    [facilityId, sectorId, serviceTypeId, regulatorId, status],
+    [facilityId, sectorId, serviceTypeId, regulatorId, status, completedOnly, expiringSoon],
   );
 
   const columns = [
@@ -304,7 +359,9 @@ export default function ReportPage() {
             sectorId ||
             serviceTypeId ||
             regulatorId ||
-            status) && (
+            status ||
+            completedOnly ||
+            expiringSoon) && (
               <span className="w-2 h-2 rounded-full bg-primary inline-block" />
             )}
         </button>
@@ -427,7 +484,7 @@ export default function ReportPage() {
               </select>
             </div>
 
-            {/* Status — spans full width only if odd */}
+            {/* Status */}
             <div>
               <label className="text-gray-800 font-semibold text-sm block mb-1">
                 Status
@@ -437,11 +494,41 @@ export default function ReportPage() {
                 onChange={(e) => setDraftStatus(e.target.value)}
                 className="w-full h-12 px-3 border border-gray-400 rounded-md text-sm outline-none focus:border-primary transition-all"
               >
-                {STATUS_OPTIONS.map((o) => (
+                {statusOptions.map((o) => (
                   <option key={o.value || "all"} value={o.value}>
                     {o.label}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            {/* Completed (approved — matches dashboard KPI) */}
+            <div>
+              <label className="text-gray-800 font-semibold text-sm block mb-1">
+                Completed
+              </label>
+              <select
+                value={draftCompletedOnly}
+                onChange={(e) => setDraftCompletedOnly(e.target.value)}
+                className="w-full h-12 px-3 border border-gray-400 rounded-md text-sm outline-none focus:border-primary transition-all"
+              >
+                <option value="">All</option>
+                <option value="1">Completed only (approved)</option>
+              </select>
+            </div>
+
+            {/* Expiring soon (within 3 months, matches dashboard) */}
+            <div>
+              <label className="text-gray-800 font-semibold text-sm block mb-1">
+                Expiring soon
+              </label>
+              <select
+                value={draftExpiringSoon}
+                onChange={(e) => setDraftExpiringSoon(e.target.value)}
+                className="w-full h-12 px-3 border border-gray-400 rounded-md text-sm outline-none focus:border-primary transition-all"
+              >
+                <option value="">All</option>
+                <option value="1">Within 3 months</option>
               </select>
             </div>
           </div>
@@ -504,7 +591,7 @@ export default function ReportPage() {
                 className={`px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase whitespace-nowrap tracking-wider ${statusBadgeClass[row.status] ?? "bg-gray-100 text-gray-600"
                   }`}
               >
-                {row.status.replace(/_/g, " ")}
+                {statusLabels[row.status] ?? row.status.replace(/_/g, " ")}
               </span>
             </td>
           </tr>

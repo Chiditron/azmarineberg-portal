@@ -1,4 +1,28 @@
-const API_BASE = 'https://azmarineberg-portal.onrender.com/api';
+/**
+ * API base resolution:
+ * - VITE_API_BASE — full base including `/api` if needed (e.g. `/api`, `https://host/api`).
+ * - VITE_API_URL — host only, no `/api` (e.g. `https://your-api.onrender.com`); we append `/api`.
+ * - Development (Vite): defaults to `/api` so the dev proxy (vite.config.ts) hits localhost:3000.
+ * - Production build with neither var set: falls back to the team Render URL (override on Vercel).
+ *
+ * Run local stack: `cd azmarineberg-portal && npm run dev`, `DATABASE_URL=... npm run db:migrate`.
+ */
+function getApiBase(): string {
+  const explicitBase = import.meta.env.VITE_API_BASE;
+  if (typeof explicitBase === 'string' && explicitBase.trim()) {
+    return explicitBase.trim().replace(/\/$/, '');
+  }
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (typeof apiUrl === 'string' && apiUrl.trim()) {
+    return `${apiUrl.trim().replace(/\/$/, '')}/api`;
+  }
+  if (import.meta.env.DEV) {
+    return '/api';
+  }
+  return 'https://azmarineberg-portal.onrender.com/api';
+}
+
+const API_BASE = getApiBase();
 
 async function getToken(): Promise<string | null> {
   return localStorage.getItem('accessToken');
@@ -246,6 +270,35 @@ export const api = {
       return request<Array<{ id: string; label: string }>>('/messages/recipients/clients');
     },
   },
+
+  getClientCompany() {
+    return request<ClientCompanyDetails>('/clients/company');
+  },
+
+  patchClientCompany(body: PatchClientCompanyBody) {
+    return request<ClientCompanyDetails>('/clients/company', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  },
+
+  createClientFacility(body: CreateClientFacilityBody) {
+    return request<ClientFacilityRow>('/clients/facilities', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  updateClientFacility(facilityId: string, body: UpdateClientFacilityBody) {
+    return request<ClientFacilityRow>(`/clients/facilities/${facilityId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  },
+
+  deleteClientFacility(facilityId: string) {
+    return request<void>(`/clients/facilities/${facilityId}`, { method: 'DELETE' });
+  },
 };
 
 export interface MessageListItem {
@@ -285,3 +338,49 @@ export interface SendMessageBody {
   body?: string;
   parentId?: string;
 }
+
+export interface ClientFacilityRow {
+  id: string;
+  facility_name: string;
+  facility_address: string;
+  lga?: string | null;
+  state?: string | null;
+  zone?: string | null;
+}
+
+export interface ClientCompanyDetails {
+  id: string;
+  company_name: string;
+  email: string;
+  phone?: string | null;
+  contact_person: string;
+  address: string;
+  lga?: string | null;
+  state?: string | null;
+  zone?: string | null;
+  industry_sector?: string | null;
+  industry_sector_id?: string | null;
+  facilities: ClientFacilityRow[];
+}
+
+export interface PatchClientCompanyBody {
+  company_name?: string;
+  phone?: string | null;
+  contact_person?: string;
+  address?: string;
+  lga?: string | null;
+  state?: string | null;
+  zone?: string | null;
+}
+
+export interface CreateClientFacilityBody {
+  facility_name: string;
+  facility_address: string;
+  lga?: string;
+  state?: string;
+  zone?: string;
+}
+
+export type UpdateClientFacilityBody = Partial<
+  Pick<ClientFacilityRow, 'facility_name' | 'facility_address' | 'lga' | 'state' | 'zone'>
+>;

@@ -5,6 +5,12 @@ node_modules
 dist
 dist-ssr
 *.local
+azmarineberg-portal/shared/*.js
+azmarineberg-portal/shared/*.js.map
+azmarineberg-portal/shared/*.d.ts
+azmarineberg-portal/shared/*.d.ts.map
+!azmarineberg-portal/shared/types.ts
+!azmarineberg-portal/shared/statuses.ts
 
 # Environment (never commit secrets)
 .env

@@ -5,6 +5,57 @@ import * as auditService from '../services/audit.service.js';
 import { sendEmail } from '../services/EmailService.js';
 import { renderClientOnboardingTemplate } from '../email/templates/clientOnboarding.template.js';
 
+const VALIDITY_UNITS = ['days', 'weeks', 'months', 'years'] as const;
+type ValidityUnit = (typeof VALIDITY_UNITS)[number];
+
+function parseServiceTypeValidity(body: Record<string, unknown>):
+  | { ok: true; count: number; unit: ValidityUnit }
+  | { ok: false; error: string } {
+  const validity_count = body.validity_count ?? body.validityCount;
+  const validity_unit = body.validity_unit ?? body.validityUnit;
+  if (validity_count === undefined || validity_count === null) {
+    return { ok: false, error: 'validity_count is required' };
+  }
+  if (validity_unit === undefined || validity_unit === null || String(validity_unit).trim() === '') {
+    return { ok: false, error: 'validity_unit is required' };
+  }
+  const count =
+    typeof validity_count === 'string' && validity_count.trim() !== ''
+      ? parseInt(validity_count, 10)
+      : Number(validity_count);
+  if (!Number.isInteger(count) || count < 1 || count > 999) {
+    return { ok: false, error: 'validity_count must be an integer from 1 to 999' };
+  }
+  const unit = String(validity_unit).trim().toLowerCase() as ValidityUnit;
+  if (!VALIDITY_UNITS.includes(unit)) {
+    return { ok: false, error: 'validity_unit must be one of: days, weeks, months, years' };
+  }
+  return { ok: true, count, unit };
+}
+
+const ALLOWED_VALIDITY_UNITS = new Set(['days', 'weeks', 'months', 'years']);
+
+function serializeServiceTypeRow(row: Record<string, unknown>) {
+  const camel = row as { validityCount?: unknown; validityUnit?: unknown };
+  const countRaw = row.validity_count ?? camel.validityCount;
+  const unitRaw = row.validity_unit ?? camel.validityUnit;
+
+  let validity_count: number | null = null;
+  let validity_unit: string | null = null;
+  if (countRaw != null && countRaw !== '') {
+    const n = Number(countRaw);
+    if (Number.isFinite(n)) {
+      const t = Math.trunc(n);
+      if (t >= 1 && t <= 999) validity_count = t;
+    }
+  }
+  if (unitRaw != null && String(unitRaw).trim()) {
+    const u = String(unitRaw).toLowerCase();
+    if (ALLOWED_VALIDITY_UNITS.has(u)) validity_unit = u;
+  }
+  return { ...row, validity_count, validity_unit };
+}
+
 export async function listFacilities(_req: Request, res: Response) {
   const result = await pool.query(
     `SELECT f.id, f.facility_name, c.company_name
@@ -107,9 +158,26 @@ export async function createClient(req: Request, res: Response) {
     if (servicesData?.length) {
       for (const svc of servicesData) {
         const facilityId = svc.facility_id || facilityIds[0];
-        await client.query(
-          `INSERT INTO services (facility_id, company_id, service_type_id, regulator_id, service_description, service_code, validity_start, validity_end, status, documents_required)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        const stRow = await client.query(
+          'SELECT validity_count, validity_unit FROM service_types WHERE id = $1',
+          [svc.service_type_id]
+        );
+        const stMeta = stRow.rows[0];
+        if (
+          !stMeta ||
+          stMeta.validity_count == null ||
+          stMeta.validity_unit == null
+        ) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            error:
+              'Each service type must have a validity duration configured before adding services',
+          });
+        }
+        const ins = await client.query(
+          `INSERT INTO services (facility_id, company_id, service_type_id, regulator_id, service_description, service_code, validity_start, validity_end, validity_count, validity_unit, status, documents_required)
+           VALUES ($1, $2, $3, $4, $5, $6, NULL, NULL, $7, $8, $9, $10)
+           RETURNING id`,
           [
             facilityId,
             companyId,
@@ -117,11 +185,16 @@ export async function createClient(req: Request, res: Response) {
             svc.regulator_id,
             svc.service_description || '',
             svc.service_code || 'N/A',
-            svc.validity_start || new Date(),
-            svc.validity_end || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+            stMeta.validity_count,
+            stMeta.validity_unit,
             svc.status || 'draft',
             JSON.stringify(svc.documents_required || []),
           ]
+        );
+        await client.query(
+          `INSERT INTO service_status_history (service_id, status, status_date, notes, created_by)
+           VALUES ($1, 'draft', CURRENT_DATE, 'Service opened', $2)`,
+          [ins.rows[0].id, req.user?.userId ?? null]
         );
       }
     }
@@ -323,7 +396,9 @@ export async function deleteRegulator(req: Request, res: Response) {
 
 export async function getServiceTypes(req: Request, res: Response) {
   const { regulatorId } = req.query;
-  let query = `SELECT st.id, st.name, st.code, st.regulator_id, reg.name as regulator_name
+  let query = `SELECT st.id, st.name, st.code, st.regulator_id,
+                      st.validity_count, st.validity_unit,
+                      reg.name as regulator_name
                FROM service_types st
                JOIN regulators reg ON reg.id = st.regulator_id`;
   const params: string[] = [];
@@ -333,7 +408,7 @@ export async function getServiceTypes(req: Request, res: Response) {
   }
   query += ' ORDER BY reg.name, st.name';
   const result = await pool.query(query, params);
-  res.json(result.rows);
+  res.json(result.rows.map((row) => serializeServiceTypeRow(row as Record<string, unknown>)));
 }
 
 export async function createServiceType(req: Request, res: Response) {
@@ -341,17 +416,29 @@ export async function createServiceType(req: Request, res: Response) {
   if (!name?.trim() || !code?.trim() || !regulator_id) {
     return res.status(400).json({ error: 'Name, code, and regulator are required' });
   }
+  const validity = parseServiceTypeValidity(req.body as Record<string, unknown>);
+  if (!validity.ok) {
+    return res.status(400).json({ error: validity.error });
+  }
   const regCheck = await pool.query('SELECT id FROM regulators WHERE id = $1', [regulator_id]);
   if (!regCheck.rows[0]) {
     return res.status(400).json({ error: 'Regulator not found' });
   }
   try {
     const result = await pool.query(
-      `INSERT INTO service_types (name, code, regulator_id) VALUES ($1, $2, $3) RETURNING id, name, code, regulator_id`,
-      [name.trim(), code.trim().toUpperCase(), regulator_id]
+      `WITH ins AS (
+         INSERT INTO service_types (name, code, regulator_id, validity_count, validity_unit)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, name, code, regulator_id, validity_count, validity_unit
+       )
+       SELECT ins.id, ins.name, ins.code, ins.regulator_id, ins.validity_count, ins.validity_unit,
+              reg.name AS regulator_name
+       FROM ins
+       JOIN regulators reg ON reg.id = ins.regulator_id`,
+      [name.trim(), code.trim().toUpperCase(), regulator_id, validity.count, validity.unit]
     );
-    await auditService.log(req.user?.userId ?? null, 'create_service_type', 'service_type', result.rows[0].id, { name, code, regulator_id }, req.ip);
-    res.status(201).json(result.rows[0]);
+    await auditService.log(req.user?.userId ?? null, 'create_service_type', 'service_type', result.rows[0].id, { name, code, regulator_id, validity_count: validity.count, validity_unit: validity.unit }, req.ip);
+    res.status(201).json(serializeServiceTypeRow(result.rows[0] as Record<string, unknown>));
   } catch (err: unknown) {
     const pgErr = err as { code?: string; constraint?: string };
     if (pgErr?.code === '23505') {
@@ -367,6 +454,10 @@ export async function updateServiceType(req: Request, res: Response) {
   if (!name?.trim() || !code?.trim() || !regulator_id) {
     return res.status(400).json({ error: 'Name, code, and regulator are required' });
   }
+  const validity = parseServiceTypeValidity(req.body as Record<string, unknown>);
+  if (!validity.ok) {
+    return res.status(400).json({ error: validity.error });
+  }
   const check = await pool.query('SELECT id FROM service_types WHERE id = $1', [id]);
   if (!check.rows[0]) {
     return res.status(404).json({ error: 'Service type not found' });
@@ -377,11 +468,15 @@ export async function updateServiceType(req: Request, res: Response) {
   }
   try {
     const result = await pool.query(
-      `UPDATE service_types SET name = $1, code = $2, regulator_id = $3 WHERE id = $4 RETURNING id, name, code, regulator_id`,
-      [name.trim(), code.trim().toUpperCase(), regulator_id, id]
+      `UPDATE service_types AS st
+       SET name = $1, code = $2, regulator_id = $3, validity_count = $4, validity_unit = $5
+       FROM regulators AS reg
+       WHERE st.id = $6 AND reg.id = $3
+       RETURNING st.id, st.name, st.code, st.regulator_id, st.validity_count, st.validity_unit, reg.name AS regulator_name`,
+      [name.trim(), code.trim().toUpperCase(), regulator_id, validity.count, validity.unit, id]
     );
-    await auditService.log(req.user?.userId ?? null, 'update_service_type', 'service_type', id, { name, code, regulator_id }, req.ip);
-    res.json(result.rows[0]);
+    await auditService.log(req.user?.userId ?? null, 'update_service_type', 'service_type', id, { name, code, regulator_id, validity_count: validity.count, validity_unit: validity.unit }, req.ip);
+    res.json(serializeServiceTypeRow(result.rows[0] as Record<string, unknown>));
   } catch (err: unknown) {
     const pgErr = err as { code?: string; constraint?: string };
     if (pgErr?.code === '23505') {
@@ -482,19 +577,32 @@ export async function addService(req: Request, res: Response) {
     regulator_id,
     service_description,
     service_code,
-    validity_start,
-    validity_end,
     status,
     documents_required,
   } = req.body;
 
-  if (!facility_id || !company_id || !service_type_id || !regulator_id || !validity_end) {
+  if (!facility_id || !company_id || !service_type_id || !regulator_id) {
     return res.status(400).json({ error: 'Missing required service fields' });
   }
 
+  const stRow = await pool.query(
+    'SELECT validity_count, validity_unit FROM service_types WHERE id = $1',
+    [service_type_id]
+  );
+  const stMeta = stRow.rows[0];
+  if (
+    !stMeta ||
+    stMeta.validity_count == null ||
+    stMeta.validity_unit == null
+  ) {
+    return res.status(400).json({
+      error: 'Service type must have a validity duration configured',
+    });
+  }
+
   const result = await pool.query(
-    `INSERT INTO services (facility_id, company_id, service_type_id, regulator_id, service_description, service_code, validity_start, validity_end, status, documents_required)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO services (facility_id, company_id, service_type_id, regulator_id, service_description, service_code, validity_start, validity_end, validity_count, validity_unit, status, documents_required)
+     VALUES ($1, $2, $3, $4, $5, $6, NULL, NULL, $7, $8, $9, $10)
      RETURNING id`,
     [
       facility_id,
@@ -503,19 +611,31 @@ export async function addService(req: Request, res: Response) {
       regulator_id,
       service_description || '',
       service_code || 'N/A',
-      validity_start || new Date(),
-      validity_end,
+      stMeta.validity_count,
+      stMeta.validity_unit,
       status || 'draft',
       JSON.stringify(documents_required || []),
     ]
   );
   const serviceId = result.rows[0].id;
+  await pool.query(
+    `INSERT INTO service_status_history (service_id, status, status_date, notes, created_by)
+     VALUES ($1, 'draft', CURRENT_DATE, 'Service opened', $2)`,
+    [serviceId, req.user?.userId ?? null]
+  );
   await auditService.log(
     req.user?.userId ?? null,
     'add_service',
     'service',
     serviceId,
-    { service_type_id, regulator_id, facility_id, status: status || 'draft' },
+    {
+      service_type_id,
+      regulator_id,
+      facility_id,
+      status: status || 'draft',
+      validity_count: stMeta.validity_count,
+      validity_unit: stMeta.validity_unit,
+    },
     req.ip
   );
   res.status(201).json({ id: serviceId });

@@ -140,7 +140,7 @@ const APP_NAV_ITEMS: AppNavItem[] = [
   {
     id: 'a-st',
     to: '/admin/service-types',
-    label: 'Service Types',
+    label: 'Service Type',
     icon: <IconServices />,
     visible: (c) => !c.isClient && (c.isAdmin || c.isSuperAdmin),
   },

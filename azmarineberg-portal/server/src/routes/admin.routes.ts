@@ -26,6 +26,12 @@ import {
   updateIndustrySector,
   deleteIndustrySector,
 } from '../controllers/industrySectors.controller.js';
+import {
+  listServiceStatusesHandler,
+  createServiceStatus,
+  updateServiceStatusDefinition,
+  deleteServiceStatus,
+} from '../controllers/serviceStatuses.controller.js';
 import { listUsers, createUser, updateUser } from '../controllers/users.controller.js';
 
 const router = Router();
@@ -72,7 +78,6 @@ router.post(
     body('company_id').notEmpty(),
     body('service_type_id').notEmpty(),
     body('regulator_id').notEmpty(),
-    body('validity_end').notEmpty(),
   ],
   validate,
   addService
@@ -87,6 +92,11 @@ router.get('/service-types', getServiceTypes);
 router.post('/service-types', requireAdminOrAbove, createServiceType);
 router.put('/service-types/:id', requireAdminOrAbove, updateServiceType);
 router.delete('/service-types/:id', requireAdminOrAbove, deleteServiceType);
+
+router.get('/service-statuses', listServiceStatusesHandler);
+router.post('/service-statuses', requireAdminOrAbove, createServiceStatus);
+router.put('/service-statuses/:id', requireAdminOrAbove, updateServiceStatusDefinition);
+router.delete('/service-statuses/:id', requireAdminOrAbove, deleteServiceStatus);
 
 router.get('/industry-sectors', listIndustrySectors);
 router.post('/industry-sectors', requireSuperAdmin, createIndustrySector);

@@ -12,10 +12,9 @@ interface BaseProps {
   disabled?: boolean;
 }
 
-export const TextInput = ({
-  label,
-  ...props
-}: BaseProps & React.InputHTMLAttributes<HTMLInputElement>) => {
+export const TextInput = (
+  props: Omit<BaseProps, 'label'> & React.InputHTMLAttributes<HTMLInputElement>,
+) => {
   const [field, meta] = useField(props);
   return (
     <div className="input-wrap">

@@ -1,40 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 
-/** After success, redirect to login if the user is idle (no input) for this long. */
-const IDLE_REDIRECT_MS = 2 * 60 * 1000;
-
 export default function ForgotPasswordPage() {
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!success) return;
-
-    const goLogin = () => {
-      navigate('/login', { replace: true });
-    };
-
-    const resetIdleTimer = () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = setTimeout(goLogin, IDLE_REDIRECT_MS);
-    };
-
-    resetIdleTimer();
-    const events: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
-    events.forEach((ev) => window.addEventListener(ev, resetIdleTimer, { passive: true }));
-
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = null;
-      events.forEach((ev) => window.removeEventListener(ev, resetIdleTimer));
-    };
-  }, [success, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

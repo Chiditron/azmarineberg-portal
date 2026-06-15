@@ -7,15 +7,16 @@ interface Service {
   id: string;
   service_code: string;
   service_description: string;
-  validity_end: string;
+  validity_end: string | null;
   status: string;
   regulator: { name: string; code: string };
   service_type: { name: string; code: string };
   facility: { facility_name: string };
-  days_to_expiry: number;
+  days_to_expiry: number | null;
 }
 
-function getExpiryColor(days: number) {
+function getExpiryColor(days: number | null | undefined) {
+  if (days == null) return 'text-gray-500';
   if (days > 30) return 'text-regulatory-green';
   if (days > 7) return 'text-regulatory-amber';
   return 'text-regulatory-red';
@@ -66,12 +67,12 @@ export default function ClientServicesPage() {
                         {s.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className={`table-td font-medium ${getExpiryColor(s.days_to_expiry ?? 999)}`}>
+                    <td className={`table-td font-medium ${getExpiryColor(s.days_to_expiry)}`}>
                       {s.validity_end
-                        ? s.days_to_expiry !== undefined
+                        ? s.days_to_expiry != null
                           ? `${s.days_to_expiry} days`
                           : new Date(s.validity_end).toLocaleDateString()
-                        : '-'}
+                        : 'Pending approval'}
                     </td>
                     <td className="table-td">
                       <Link to={`/services/${s.id}`} className="text-primary hover:underline">

@@ -12,10 +12,55 @@ interface AuditLogEntry {
   action: string;
   entity_type: string;
   entity_id: string | null;
+  entity_label?: string | null;
   changes: Record<string, unknown> | null;
   ip: string | null;
   created_at: string;
   actor_email: string | null;
+}
+
+/** Hide raw UUID fields when the API added a readable companion (see auditDisplayEnrichment). */
+const ID_KEYS_WITH_DISPLAY: [string, string][] = [
+  ["regulator_id", "regulator_name"],
+  ["service_type_id", "service_type_name"],
+  ["facility_id", "facility_name"],
+  ["service_id", "service_label"],
+  ["company_id", "company_name"],
+];
+
+function getAuditChangeEntries(
+  changes: Record<string, unknown>,
+): [string, unknown][] {
+  return Object.entries(changes).filter(([key]) => {
+    for (const [idKey, displayKey] of ID_KEYS_WITH_DISPLAY) {
+      if (key === idKey) {
+        const companion = changes[displayKey];
+        if (
+          companion !== undefined &&
+          companion !== null &&
+          String(companion).trim() !== ""
+        ) {
+          return false;
+        }
+      }
+    }
+    return true;
+  });
+}
+
+const CHANGE_FIELD_LABELS: Record<string, string> = {
+  regulator_name: "Regulator",
+  service_type_name: "Service type",
+  facility_name: "Facility",
+  service_label: "Service",
+  company_name: "Company",
+};
+
+function formatChangeFieldLabel(key: string): string {
+  return (
+    CHANGE_FIELD_LABELS[key] ??
+    key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  );
 }
 
 function formatAction(text: string): string {
@@ -252,7 +297,11 @@ export default function AuditLogPage() {
                 <span className="font-medium text-gray-700">
                   {l.entity_type}
                 </span>
-                {l.entity_id ? (
+                {l.entity_label ? (
+                  <span className="text-gray-800 ml-1 font-medium">
+                    · {l.entity_label}
+                  </span>
+                ) : l.entity_id ? (
                   <span className="text-gray-400 ml-1">
                     :{String(l.entity_id).slice(0, 8)}...
                   </span>
@@ -280,17 +329,20 @@ export default function AuditLogPage() {
               <tr>
                 <td colSpan={6} className="px-6 py-5 bg-gray-50/80">
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {Object.entries(l.changes).map(([key, value]) => (
-                      <div key={key} className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
+                    {getAuditChangeEntries(l.changes).map(([key, value]) => (
+                      <div
+                        key={key}
+                        className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm"
+                      >
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-                          {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                          {formatChangeFieldLabel(key)}
                         </p>
                         <p className="text-sm font-medium text-gray-800 break-all">
                           {value === null || value === undefined
-                            ? '—'
-                            : typeof value === 'object'
-                            ? JSON.stringify(value)
-                            : String(value)}
+                            ? "—"
+                            : typeof value === "object"
+                              ? JSON.stringify(value)
+                              : String(value)}
                         </p>
                       </div>
                     ))}

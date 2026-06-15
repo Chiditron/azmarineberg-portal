@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS service_types (
   name VARCHAR(255) NOT NULL,
   code VARCHAR(50) NOT NULL,
   regulator_id UUID NOT NULL REFERENCES regulators(id),
+  validity_count INTEGER NOT NULL CHECK (validity_count > 0 AND validity_count <= 999),
+  validity_unit VARCHAR(20) NOT NULL CHECK (validity_unit IN ('days', 'weeks', 'months', 'years')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -79,9 +81,37 @@ CREATE TABLE IF NOT EXISTS services (
   regulator_id UUID NOT NULL REFERENCES regulators(id),
   service_description TEXT NOT NULL,
   service_code VARCHAR(50) NOT NULL,
-  validity_start DATE NOT NULL,
-  validity_end DATE NOT NULL,
-  status VARCHAR(50) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'site_visit', 'report_preparation', 'submission', 'approved', 'closed')),
+  validity_start DATE,
+  validity_end DATE,
+  validity_count INTEGER CHECK (validity_count IS NULL OR (validity_count > 0 AND validity_count <= 999)),
+  validity_unit VARCHAR(20) CHECK (validity_unit IS NULL OR validity_unit IN ('days', 'weeks', 'months', 'years')),
+  status VARCHAR(50) NOT NULL DEFAULT 'draft' CHECK (
+    status IN (
+      'draft',
+      'site_visit',
+      'quality_checks',
+      'field_exercise',
+      'analysis',
+      'regulatory_review',
+      'payment_pending',
+      'client_acknowledgement',
+      'inspection',
+      'bill_preparation',
+      'procurement_stage',
+      'seasonal_data_gathering',
+      'data_gathering',
+      'scoping',
+      'site_verification',
+      'processing',
+      'final_approval',
+      'interim_approval',
+      'client_review',
+      'postponed',
+      'report_preparation',
+      'submission',
+      'closed'
+    )
+  ),
   documents_required JSONB DEFAULT '[]',
   closed_reason VARCHAR(20) CHECK (closed_reason IN ('expired', 'renewed')),
   renewed_from_service_id UUID REFERENCES services(id),
@@ -94,6 +124,7 @@ CREATE TABLE IF NOT EXISTS service_status_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   service_id UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
   status VARCHAR(50) NOT NULL,
+  status_date DATE NOT NULL,
   notes TEXT,
   created_by UUID REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW()

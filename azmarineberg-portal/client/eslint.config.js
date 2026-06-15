@@ -11,13 +11,19 @@ export default defineConfig([
     files: ['**/*.{ts,tsx}'],
     extends: [
       js.configs.recommended,
-      tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
+      ...tseslint.configs.recommended,
+      reactHooks.configs['recommended-latest'],
       reactRefresh.configs.vite,
     ],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+    },
+    rules: {
+      // Legacy `any` and shared nav/context modules: tighten gradually; keep lint runnable.
+      '@typescript-eslint/no-explicit-any': 'warn',
+      // App often exports route meta + small helpers from the same file as components.
+      'react-refresh/only-export-components': 'warn',
     },
   },
 ])

@@ -1,12 +1,19 @@
 export type UserRole = 'super_admin' | 'admin' | 'staff' | 'client';
 
-export type ServiceStatus =
-  | 'draft'
-  | 'site_visit'
-  | 'report_preparation'
-  | 'submission'
-  | 'approved'
-  | 'closed';
+/** Service workflow status code (managed via admin service-statuses). */
+export type ServiceStatus = string;
+
+export interface ServiceStatusDefinition {
+  id: string;
+  code: string;
+  label: string;
+  sort_order: number;
+  requires_approval_effective_date: boolean;
+  is_terminal: boolean;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export type ReportCycleStatus =
   | 'pending'
@@ -90,8 +97,10 @@ export interface Service {
   regulator_id: string;
   service_description: string;
   service_code: string;
-  validity_start: Date;
-  validity_end: Date;
+  validity_start: Date | null;
+  validity_end: Date | null;
+  validity_count?: number | null;
+  validity_unit?: string | null;
   status: ServiceStatus;
   documents_required: string[];
   closed_reason: ClosedReason;

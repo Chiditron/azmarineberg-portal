@@ -2,20 +2,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import TableWrapper from '../components/TableWrapper';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons';
-
-const STATUS_OPTIONS = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'site_visit', label: 'Site Visit' },
-  { value: 'report_preparation', label: 'Report Preparation' },
-  { value: 'submission', label: 'Submission' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'closed', label: 'Closed' },
-];
+import type { ServiceStatusDefinition, ServiceStatusMeta } from '../types/serviceStatus';
 
 const DOCUMENT_TYPES = [
   { value: 'azmarineberg_upload', label: 'Report / Document' },
@@ -44,12 +37,14 @@ interface ServiceDetail {
   id: string;
   service_code: string;
   service_description: string;
-  validity_end: string;
+  validity_start: string | null;
+  validity_end: string | null;
   status: string;
+  status_meta?: ServiceStatusMeta;
   regulator: { name: string; code: string };
   service_type: { name: string; code: string };
   facility: { facility_name: string };
-  days_to_expiry: number;
+  days_to_expiry: number | null;
   timeline: TimelineItem[];
 }
 
@@ -59,6 +54,9 @@ export default function ServiceDetailPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [statusNotes, setStatusNotes] = useState('');
+  const [statusSelection, setStatusSelection] = useState('');
+  const [statusDate, setStatusDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [approvalEffectiveDate, setApprovalEffectiveDate] = useState('');
   const [uploadDocType, setUploadDocType] = useState('azmarineberg_upload');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -79,15 +77,39 @@ export default function ServiceDetailPage() {
     enabled: !!id,
   });
 
+  const { data: statusOptions = [] } = useQuery({
+    queryKey: ['service-statuses'],
+    queryFn: () => api.get<ServiceStatusDefinition[]>('/admin/service-statuses'),
+  });
+
+  const selectedStatus = statusOptions.find((s) => s.code === statusSelection);
+  const isCurrentTerminal = service?.status_meta?.is_terminal ?? false;
+  const currentStatusLabel = service?.status_meta?.label ?? service?.status;
+
   const statusMutation = useMutation({
-    mutationFn: (data: { status: string; notes?: string }) =>
-      api.patch(`/services/${id}/status`, data),
+    mutationFn: (data: {
+      status: string;
+      status_date: string;
+      notes?: string;
+      approval_effective_date?: string;
+    }) => api.patch(`/services/${id}/status`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service', id] });
+      setStatusNotes('');
+      setApprovalEffectiveDate('');
     },
   });
 
-  const getExpiryColor = (days: number) => {
+  useEffect(() => {
+    if (service) {
+      setStatusSelection(service.status);
+      setApprovalEffectiveDate('');
+      setStatusDate(new Date().toISOString().slice(0, 10));
+    }
+  }, [service?.id, service?.status]);
+
+  const getExpiryColor = (days: number | null | undefined) => {
+    if (days == null) return 'text-gray-500';
     if (days > 30) return 'text-regulatory-green';
     if (days > 7) return 'text-regulatory-amber';
     return 'text-regulatory-red';
@@ -110,9 +132,27 @@ export default function ServiceDetailPage() {
 
   const handleStatusUpdate = (e: React.FormEvent) => {
     e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const status = (form.elements.namedItem('status') as HTMLSelectElement)?.value;
-    if (status) statusMutation.mutate({ status, notes: statusNotes || undefined });
+    if (!statusSelection) return;
+    if (!statusDate) return;
+    const isApprovalLike = selectedStatus?.requires_approval_effective_date ?? false;
+    if (isApprovalLike && !service?.validity_end) {
+      if (!approvalEffectiveDate) {
+        toast.error('Enter the approval effective date (when the regulator approval or certificate takes effect).');
+        return;
+      }
+      statusMutation.mutate({
+        status: statusSelection,
+        status_date: statusDate,
+        notes: statusNotes || undefined,
+        approval_effective_date: approvalEffectiveDate,
+      });
+      return;
+    }
+    statusMutation.mutate({
+      status: statusSelection,
+      status_date: statusDate,
+      notes: statusNotes || undefined,
+    });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,12 +198,30 @@ export default function ServiceDetailPage() {
                 <p className="mt-1 text-gray-600">{service.service_description}</p>
               </div>
               <div className="shrink-0 border-t border-gray-100 pt-4 md:border-t-0 md:border-l md:pl-6 md:pt-0 md:text-right">
-                <p className={`text-lg font-semibold ${getExpiryColor(service.days_to_expiry ?? 999)}`}>
-                  {service.days_to_expiry !== undefined ? `${service.days_to_expiry} days to expiry` : 'N/A'}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Valid until: {new Date(service.validity_end).toLocaleDateString()}
-                </p>
+                {service.validity_end ? (
+                  <>
+                    <p className={`text-lg font-semibold ${getExpiryColor(service.days_to_expiry)}`}>
+                      {service.days_to_expiry != null
+                        ? `${service.days_to_expiry} days to expiry`
+                        : '—'}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {service.validity_start
+                        ? `Valid from: ${new Date(service.validity_start).toLocaleDateString()} · `
+                        : ''}
+                      Valid until: {new Date(service.validity_end).toLocaleDateString()}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-lg font-semibold text-gray-600">
+                      Regulatory validity not started
+                    </p>
+                    <p className="text-sm text-gray-500 max-w-xs md:ml-auto">
+                      Expiry is calculated after approval, from the date the regulator approval or certificate takes effect.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
             <div className="mt-3 flex flex-col gap-2 md:mt-2 md:flex-row md:flex-wrap md:gap-x-4 md:gap-y-1 pt-4 border-t border-gray-100">
@@ -182,6 +240,11 @@ export default function ServiceDetailPage() {
         {canUpdateStatus && (
           <div className="mb-6 rounded-lg bg-gray-50 p-4">
             <h3 className="mb-3 font-semibold">Update Status</h3>
+            {isCurrentTerminal && (
+              <p className="mb-3 text-sm text-gray-600">
+                This service is in <span className="font-semibold">{currentStatusLabel}</span> and is locked from further status updates.
+              </p>
+            )}
             <form
               onSubmit={handleStatusUpdate}
               className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end"
@@ -190,16 +253,45 @@ export default function ServiceDetailPage() {
                 <label className="mb-1 block text-sm">Status</label>
                 <select
                   name="status"
-                  defaultValue={service.status}
+                  value={statusSelection}
+                  onChange={(e) => setStatusSelection(e.target.value)}
                   className="w-full rounded border px-3 py-2 md:min-w-[180px]"
+                  disabled={isCurrentTerminal}
                 >
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
+                  {statusOptions.map((o) => (
+                    <option key={o.code} value={o.code}>
                       {o.label}
                     </option>
                   ))}
                 </select>
               </div>
+              <div className="w-full min-w-0 md:w-auto">
+                <label className="mb-1 block text-sm">Status date *</label>
+                <input
+                  type="date"
+                  value={statusDate}
+                  onChange={(e) => setStatusDate(e.target.value)}
+                  className="w-full rounded border px-3 py-2 md:min-w-[180px]"
+                  required
+                  disabled={isCurrentTerminal}
+                />
+              </div>
+              {selectedStatus?.requires_approval_effective_date && (
+                <div className="w-full min-w-0 md:w-auto">
+                  <label className="mb-1 block text-sm">Approval effective date *</label>
+                  <input
+                    type="date"
+                    value={approvalEffectiveDate}
+                    onChange={(e) => setApprovalEffectiveDate(e.target.value)}
+                    className="w-full rounded border px-3 py-2 md:min-w-[180px]"
+                    required
+                    disabled={isCurrentTerminal}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    When the regulator approval or certificate takes effect (validity period starts here).
+                  </p>
+                </div>
+              )}
               <div className="min-w-0 flex-1 md:min-w-[200px]">
                 <label className="mb-1 block text-sm">Notes (optional)</label>
                 <input
@@ -208,11 +300,12 @@ export default function ServiceDetailPage() {
                   onChange={(e) => setStatusNotes(e.target.value)}
                   placeholder="e.g. Site visit completed"
                   className="w-full rounded border px-3 py-2"
+                  disabled={isCurrentTerminal}
                 />
               </div>
               <button
                 type="submit"
-                disabled={statusMutation.isPending}
+                disabled={statusMutation.isPending || isCurrentTerminal}
                 className="w-full shrink-0 rounded bg-primary px-4 py-2 text-white hover:bg-primary-dark disabled:opacity-50 md:w-auto"
               >
                 {statusMutation.isPending ? 'Updating...' : 'Update'}
@@ -223,7 +316,9 @@ export default function ServiceDetailPage() {
         <div className='mt-6'>
           <h3 className="font-semibold mb-3">Status Timeline</h3>
           <div className="space-y-2">
-            {service.timeline?.map((t) => (
+            {!service.timeline?.length ? (
+              <p className="text-sm text-gray-500">No status updates yet.</p>
+            ) : service.timeline?.map((t) => (
               <div
                 key={t.status}
                 className={`flex items-center gap-3 p-2 rounded ${t.current ? 'bg-primary/10' : t.completed ? 'bg-gray-50' : 'bg-gray-100 opacity-60'

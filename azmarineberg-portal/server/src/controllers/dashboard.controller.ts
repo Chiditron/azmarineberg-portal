@@ -18,8 +18,10 @@ export async function getMetrics(_req: Request, res: Response) {
   for (const s of servicesResult.rows) {
     if (s.status === 'approved') completedServices++;
     else activeServices++;
-    const end = new Date(s.validity_end);
-    if (end <= threeMonthsFromNow && end >= now) expiringServices++;
+    if (s.validity_end != null) {
+      const end = new Date(s.validity_end);
+      if (end <= threeMonthsFromNow && end >= now) expiringServices++;
+    }
   }
 
   const byRegulator = await pool.query(

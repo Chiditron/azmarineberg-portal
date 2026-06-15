@@ -101,10 +101,10 @@ async function seed() {
     for (const st of serviceTypes) {
       if (st.regulator_id) {
         await client.query(
-          `INSERT INTO service_types (name, code, regulator_id)
-           SELECT $1, $2, $3
-           WHERE NOT EXISTS (SELECT 1 FROM service_types WHERE code = $4)`,
-          [st.name, st.code, st.regulator_id, st.code]
+          `INSERT INTO service_types (name, code, regulator_id, validity_count, validity_unit)
+           SELECT $1, $2, $3, $4, $5
+           WHERE NOT EXISTS (SELECT 1 FROM service_types WHERE code = $6)`,
+          [st.name, st.code, st.regulator_id, 1, 'years', st.code]
         );
       }
     }

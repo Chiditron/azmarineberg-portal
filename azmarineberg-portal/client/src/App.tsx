@@ -15,6 +15,7 @@ import AdminClients from './pages/AdminClients';
 import AdminClientDetail from './pages/AdminClientDetail';
 import RegulatorsPage from './pages/RegulatorsPage';
 import ServiceTypesPage from './pages/ServiceTypesPage';
+import ServiceStatusesPage from './pages/ServiceStatusesPage';
 import IndustrySectorsPage from './pages/IndustrySectorsPage';
 import UsersPage from './pages/UsersPage';
 import AuditLogPage from './pages/AuditLogPage';
@@ -147,6 +148,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'super_admin']} redirectTo="/admin">
                 <ServiceTypesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="service-statuses"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'super_admin']} redirectTo="/admin">
+                <ServiceStatusesPage />
               </ProtectedRoute>
             }
           />

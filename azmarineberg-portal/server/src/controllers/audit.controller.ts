@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool.js';
+import { enrichAuditLogRows } from '../services/auditDisplayEnrichment.js';
 
 export async function listAuditLogs(req: Request, res: Response) {
   const { limit = '50', offset = '0', entity_type, entity_id, action, from, to } = req.query;
@@ -44,5 +45,6 @@ export async function listAuditLogs(req: Request, res: Response) {
   params.push(limitVal, offsetVal);
 
   const result = await pool.query(query, params);
-  res.json({ rows: result.rows, total });
+  const rows = await enrichAuditLogRows(result.rows);
+  res.json({ rows, total });
 }

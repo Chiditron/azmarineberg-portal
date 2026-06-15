@@ -15,13 +15,19 @@ export interface ReportRow {
   status: string;
 }
 
+function truthyQueryFlag(v: unknown): boolean {
+  return v === '1' || v === 'true';
+}
+
 function buildReportWhere(
   params: (string | number)[],
   facilityId?: string,
   sectorId?: string,
   serviceTypeId?: string,
   regulatorId?: string,
-  status?: string
+  status?: string,
+  completedOnly?: boolean,
+  expiringSoon?: boolean
 ): { conditions: string[]; nextIndex: number } {
   const conditions: string[] = [];
   let i = params.length;
@@ -44,6 +50,16 @@ function buildReportWhere(
   if (status) {
     conditions.push(`s.status = $${++i}`);
     params.push(status);
+  }
+  if (completedOnly) {
+    conditions.push(
+      `s.status IN (SELECT code FROM service_statuses WHERE requires_approval_effective_date = true)`
+    );
+  }
+  if (expiringSoon) {
+    conditions.push(
+      `s.status != 'closed' AND s.validity_end IS NOT NULL AND s.validity_end::date >= CURRENT_DATE AND s.validity_end::date <= (CURRENT_DATE + INTERVAL '3 months')`
+    );
   }
   return { conditions, nextIndex: i };
 }
@@ -72,6 +88,8 @@ export async function listReport(req: Request, res: Response) {
     service_type_id: serviceTypeId,
     regulator_id: regulatorId,
     status,
+    completed,
+    expiring_soon: expiringSoonParam,
     limit = '25',
     offset = '0',
   } = req.query;
@@ -83,7 +101,9 @@ export async function listReport(req: Request, res: Response) {
     typeof sectorId === 'string' ? sectorId : undefined,
     typeof serviceTypeId === 'string' ? serviceTypeId : undefined,
     typeof regulatorId === 'string' ? regulatorId : undefined,
-    typeof status === 'string' ? status : undefined
+    typeof status === 'string' ? status : undefined,
+    truthyQueryFlag(completed),
+    truthyQueryFlag(expiringSoonParam)
   );
 
   const whereClause = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
@@ -130,6 +150,8 @@ export async function exportReport(req: Request, res: Response) {
     service_type_id: serviceTypeId,
     regulator_id: regulatorId,
     status,
+    completed,
+    expiring_soon: expiringSoonParam,
   } = req.query;
 
   const fmt = typeof format === 'string' ? format.toLowerCase() : '';
@@ -144,7 +166,9 @@ export async function exportReport(req: Request, res: Response) {
     typeof sectorId === 'string' ? sectorId : undefined,
     typeof serviceTypeId === 'string' ? serviceTypeId : undefined,
     typeof regulatorId === 'string' ? regulatorId : undefined,
-    typeof status === 'string' ? status : undefined
+    typeof status === 'string' ? status : undefined,
+    truthyQueryFlag(completed),
+    truthyQueryFlag(expiringSoonParam)
   );
 
   const whereClause = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';

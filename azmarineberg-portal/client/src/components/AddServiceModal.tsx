@@ -4,6 +4,7 @@ import * as Yup from "yup";
 import { api } from "../services/api";
 import Modal from "./ui/Modal";
 import { SingleSelectInput, TextLabelInput } from "./ui/FormFields";
+import { formatValidityPeriod } from "../utils/formatValidityPeriod";
 
 interface Facility {
   id: string;
@@ -22,6 +23,8 @@ interface ServiceType {
   name: string;
   code: string;
   regulator_id: string;
+  validity_count?: number | null;
+  validity_unit?: string | null;
 }
 
 interface AddServiceModalProps {
@@ -32,20 +35,11 @@ interface AddServiceModalProps {
   facilities: Facility[];
 }
 
-const today = new Date().toISOString().slice(0, 10);
-const nextYear = (() => {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() + 1);
-  return d.toISOString().slice(0, 10);
-})();
-
 const AddServiceSchema = Yup.object().shape({
   facility_id: Yup.string().required("Facility is required"),
   regulator_id: Yup.string().required("Regulator is required"),
   service_type_id: Yup.string().required("Service type is required"),
   service_description: Yup.string(),
-  validity_start: Yup.string().required("Start date is required"),
-  validity_end: Yup.string().required("End date is required"),
 });
 
 interface FormValues {
@@ -53,11 +47,8 @@ interface FormValues {
   regulator_id: string;
   service_type_id: string;
   service_description: string;
-  validity_start: string;
-  validity_end: string;
 }
 
-// Inner form component so hooks can be called at the top level
 function AddServiceForm({
   facilities,
   regulators,
@@ -76,6 +67,10 @@ function AddServiceForm({
       ),
     enabled: !!values.regulator_id,
   });
+
+  const selectedSt = (serviceTypes ?? []).find(
+    (s) => s.id === values.service_type_id,
+  );
 
   return (
     <Form className="space-y-5 font-lato">
@@ -110,24 +105,34 @@ function AddServiceForm({
         disabled={!values.regulator_id}
         options={(serviceTypes ?? []).map((s) => ({
           value: s.id,
-          label: `${s.name} (${s.code})`,
+          label:
+            s.validity_count != null && s.validity_unit
+              ? `${s.name} (${s.code}) · ${formatValidityPeriod(s.validity_count, s.validity_unit)}`
+              : `${s.name} (${s.code})`,
         }))}
       />
+
+      {selectedSt &&
+        selectedSt.validity_count != null &&
+        selectedSt.validity_unit && (
+          <p className="text-sm text-gray-600 -mt-2">
+            Regulatory validity will run for{" "}
+            <span className="font-semibold text-gray-800">
+              {formatValidityPeriod(
+                selectedSt.validity_count,
+                selectedSt.validity_unit,
+              )}
+            </span>{" "}
+            starting from the approval effective date (set when the service is
+            approved).
+          </p>
+        )}
 
       <TextLabelInput
         label="Description"
         name="service_description"
         placeholder="Brief service description (optional)"
       />
-
-      <div className="grid grid-cols-2 gap-5">
-        <TextLabelInput
-          label="Valid From *"
-          name="validity_start"
-          type="date"
-        />
-        <TextLabelInput label="Valid Until *" name="validity_end" type="date" />
-      </div>
 
       <div className="pt-6 border-t border-gray-100">
         <button
@@ -169,8 +174,6 @@ export default function AddServiceModal({
           regulator_id: "",
           service_type_id: "",
           service_description: "",
-          validity_start: today,
-          validity_end: nextYear,
         }}
         validationSchema={AddServiceSchema}
         enableReinitialize
@@ -190,8 +193,6 @@ export default function AddServiceModal({
               service_description:
                 values.service_description || (st?.name ?? ""),
               service_code: st?.code ?? "N/A",
-              validity_start: values.validity_start,
-              validity_end: values.validity_end,
               status: "draft",
             });
             onSuccess();
